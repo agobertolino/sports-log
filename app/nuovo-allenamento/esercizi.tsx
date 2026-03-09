@@ -9,20 +9,60 @@ import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { addSet, finishWorkout, deleteWorkout, createWorkout } from '@/db/workouts';
 import db from '@/db/database';
 
-// ── Esercizi comuni (suggerimenti base) ──────────────────────
 const ESERCIZI_COMUNI = [
-  'Panca piana', 'Panca inclinata', 'Panca declinata',
-  'Croci manubri', 'Push-up', 'Dips',
-  'Lat machine', 'Rematore bilanciere', 'Rematore manubrio',
-  'Pull-up', 'Chin-up', 'Facepull', 'Pulley basso',
-  'Lento avanti', 'Alzate laterali', 'Alzate frontali',
-  'Curl bilanciere', 'Curl manubri', 'Curl martello',
-  'Tricipiti corda', 'French press', 'Kickback',
-  'Squat', 'Leg press', 'Affondi', 'Stacchi',
-  'Leg curl', 'Leg extension', 'Calf raise',
-  'Hip thrust', 'Romanian deadlift', 'Stacchi sumo',
-  'Plank', 'Crunch', 'Russian twist', 'Ab wheel',
+  // Chest
+  'Barbell bench press', 'Incline barbell bench press', 'Decline barbell bench press',
+  'Dumbbell bench press', 'Incline dumbbell press', 'Decline dumbbell press',
+  'Dumbbell flyes', 'Incline dumbbell flyes', 'Cable flyes', 'Cable crossover',
+  'Push-up', 'Wide push-up', 'Diamond push-up', 'Archer push-up', 'Decline push-up',
+  'Dips', 'Chest dips', 'Machine chest press', 'Pec deck',
+
+  // Back
+  'Pull-up', 'Chin-up', 'Wide-grip pull-up', 'Neutral-grip pull-up', 'Weighted pull-up',
+  'Lat pulldown', 'Close-grip lat pulldown', 'Behind-the-neck pulldown',
+  'Barbell row', 'Dumbbell row', 'Cable row', 'Seated cable row', 'Pendlay row',
+  'T-bar row', 'Chest-supported row', 'Meadows row', 'Inverted row',
+  'Face pull', 'Straight-arm pulldown', 'Single-arm cable pulldown',
+  'Hyperextension', 'Good morning',
+
+  // Shoulders
+  'Overhead press', 'Seated dumbbell press', 'Arnold press', 'Push press',
+  'Lateral raise', 'Cable lateral raise', 'Bent-over lateral raise',
+  'Front raise', 'Plate front raise', 'Cable front raise',
+  'Upright row', 'Shrugs', 'Cable face pull',
+
+  // Biceps
+  'Barbell curl', 'EZ-bar curl', 'Dumbbell curl', 'Hammer curl',
+  'Concentration curl', 'Preacher curl', 'Incline dumbbell curl',
+  'Cable curl', 'Rope hammer curl', 'Reverse curl', 'Spider curl',
+
+  // Triceps
+  'Tricep pushdown', 'Tricep rope pushdown', 'Overhead tricep extension',
+  'French press', 'Close-grip bench press', 'Skull crushers',
+  'Tricep kickback', 'Cable overhead extension',
+
+  // Legs
+  'Squat', 'Front squat', 'Box squat', 'Pause squat', 'Goblet squat',
+  'Leg press', 'Hack squat', 'Bulgarian split squat', 'Lunge', 'Walking lunge',
+  'Romanian deadlift', 'Stiff-leg deadlift', 'Sumo deadlift', 'Conventional deadlift',
+  'Leg curl', 'Lying leg curl', 'Seated leg curl', 'Leg extension', 'Nordic curl',
+  'Hip thrust', 'Glute bridge', 'Cable kickback', 'Abductor machine', 'Adductor machine',
+  'Calf raise', 'Standing calf raise', 'Seated calf raise', 'Donkey calf raise', 'Single-leg calf raise',
+  'Step-up', 'Sissy squat',
+
+  // Core
+  'Plank', 'Side plank', 'RKC plank',
+  'Crunch', 'Cable crunch', 'Decline crunch', 'Reverse crunch',
+  'Leg raise', 'Hanging leg raise', 'Hanging knee raise',
+  'Ab wheel rollout', 'Dragon flag', 'L-sit',
+  'Russian twist', 'Pallof press', 'Dead bug', 'Bird dog',
+  'Oblique crunch', 'Bicycle crunch', 'Windshield wiper',
+
+  // Olympic / Compound
+  'Deadlift', 'Power clean', 'Clean and jerk', 'Snatch',
+  'Farmer carry', 'Suitcase carry', 'Trap bar deadlift',
 ];
+
 
 // ── Tipi ─────────────────────────────────────────────────────
 type SetRow = { id: string; reps: string; peso: string };
