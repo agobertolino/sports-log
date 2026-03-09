@@ -11,20 +11,79 @@ import Button from '@/components/Button';
 
 type Step = 0 | 1;
 
+type Errors = {
+  nome?: string;
+  nascita?: string;
+  peso?: string;
+  altezza?: string;
+};
+
+function validateDate(val: string): string | undefined {
+  if (!val.trim()) return undefined; // opzionale
+  const parts = val.split('/');
+  if (parts.length !== 3) return 'Formato: GG/MM/AAAA';
+  const [dd, mm, yyyy] = parts.map(Number);
+  if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return 'Formato: GG/MM/AAAA';
+  if (yyyy < 1900 || yyyy > new Date().getFullYear()) return 'Anno non valido';
+  if (mm < 1 || mm > 12) return 'Mese non valido';
+  if (dd < 1 || dd > 31) return 'Giorno non valido';
+  const d = new Date(yyyy, mm - 1, dd);
+  if (d > new Date()) return 'Data nel futuro';
+  if (d.getMonth() !== mm - 1) return 'Data non valida';
+  return undefined;
+}
+
+function validatePeso(val: string): string | undefined {
+  if (!val.trim()) return undefined;
+  const n = parseFloat(val);
+  if (isNaN(n)) return 'Inserisci un numero';
+  if (n < 20 || n > 300) return 'Valore tra 20 e 300 kg';
+  return undefined;
+}
+
+function validateAltezza(val: string): string | undefined {
+  if (!val.trim()) return undefined;
+  const n = parseFloat(val);
+  if (isNaN(n)) return 'Inserisci un numero';
+  if (n < 50 || n > 250) return 'Valore tra 50 e 250 cm';
+  return undefined;
+}
+
+// Auto-formatta la data mentre si digita: aggiunge / dopo GG e MM
+function formatDateInput(prev: string, next: string): string {
+  // Rimuovi tutto tranne numeri e /
+  let clean = next.replace(/[^\d]/g, '');
+  if (clean.length > 8) clean = clean.slice(0, 8);
+  if (clean.length >= 5) return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+  if (clean.length >= 3) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  return clean;
+}
+
 export default function Onboarding() {
   const [step, setStep] = useState<Step>(0);
   const [nome, setNome] = useState('');
   const [nascita, setNascita] = useState('');
   const [peso, setPeso] = useState('');
   const [altezza, setAltezza] = useState('');
-  const [error, setError] = useState(false);
+  const [errors, setErrors] = useState<Errors>({});
 
   const handleNext = () => {
     if (step === 0) {
-      if (!nome.trim()) { setError(true); return; }
-      setError(false);
+      if (!nome.trim()) {
+        setErrors({ nome: 'Il nome è richiesto' });
+        return;
+      }
+      setErrors({});
       setStep(1);
     } else {
+      const errs: Errors = {
+        nascita: validateDate(nascita),
+        peso: validatePeso(peso),
+        altezza: validateAltezza(altezza),
+      };
+      const hasErrors = Object.values(errs).some(Boolean);
+      if (hasErrors) { setErrors(errs); return; }
+      setErrors({});
       saveAndContinue();
     }
   };
@@ -68,15 +127,16 @@ export default function Onboarding() {
                   <View style={styles.badge}><Text style={styles.badgeText}>Richiesto</Text></View>
                 </View>
                 <TextInput
-                  style={[styles.input, error && styles.inputError]}
+                  style={[styles.input, errors.nome && styles.inputError]}
                   placeholder="es. Marco"
                   placeholderTextColor={colors.gray3}
                   value={nome}
-                  onChangeText={t => { setNome(t); setError(false); }}
+                  onChangeText={t => { setNome(t); setErrors(e => ({ ...e, nome: undefined })); }}
                   onSubmitEditing={handleNext}
                   returnKeyType="next"
                   autoFocus
                 />
+                {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
               </View>
             </>
           ) : (
@@ -94,13 +154,18 @@ export default function Onboarding() {
                   <Text style={styles.optional}>Opzionale</Text>
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.nascita && styles.inputError]}
                   placeholder="GG/MM/AAAA"
                   placeholderTextColor={colors.gray3}
                   value={nascita}
-                  onChangeText={setNascita}
-                  keyboardType="numbers-and-punctuation"
+                  onChangeText={v => {
+                    setNascita(formatDateInput(nascita, v));
+                    setErrors(e => ({ ...e, nascita: undefined }));
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={10}
                 />
+                {errors.nascita && <Text style={styles.errorText}>{errors.nascita}</Text>}
               </View>
 
               <View style={styles.row}>
@@ -110,13 +175,14 @@ export default function Onboarding() {
                     <Text style={styles.optional}>kg</Text>
                   </View>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.peso && styles.inputError]}
                     placeholder="75"
                     placeholderTextColor={colors.gray3}
                     value={peso}
-                    onChangeText={setPeso}
+                    onChangeText={v => { setPeso(v); setErrors(e => ({ ...e, peso: undefined })); }}
                     keyboardType="decimal-pad"
                   />
+                  {errors.peso && <Text style={styles.errorText}>{errors.peso}</Text>}
                 </View>
                 <View style={[styles.fieldWrap, { flex: 1 }]}>
                   <View style={styles.labelRow}>
@@ -124,19 +190,19 @@ export default function Onboarding() {
                     <Text style={styles.optional}>cm</Text>
                   </View>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.altezza && styles.inputError]}
                     placeholder="178"
                     placeholderTextColor={colors.gray3}
                     value={altezza}
-                    onChangeText={setAltezza}
+                    onChangeText={v => { setAltezza(v); setErrors(e => ({ ...e, altezza: undefined })); }}
                     keyboardType="number-pad"
                   />
+                  {errors.altezza && <Text style={styles.errorText}>{errors.altezza}</Text>}
                 </View>
               </View>
             </>
           )}
 
-          {/* Buttons */}
           <View style={styles.actions}>
             <TouchableOpacity style={styles.btnPrimary} onPress={handleNext} activeOpacity={0.85}>
               <Text style={styles.btnPrimaryText}>
@@ -179,10 +245,7 @@ const styles = StyleSheet.create({
     lineHeight: 46,
     marginBottom: 10,
   },
-  titleItalic: {
-    fontFamily: fonts.serifItalic,
-    color: colors.gray2,
-  },
+  titleItalic: { fontFamily: fonts.serifItalic, color: colors.gray2 },
   subtitle: {
     fontFamily: fonts.sans,
     fontSize: 15,
@@ -213,6 +276,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   inputError: { borderColor: colors.error },
+  errorText: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: '#FF6B6B',
+    marginTop: 6,
+    marginLeft: 2,
+  },
   row: { flexDirection: 'row', gap: 12 },
   actions: { marginTop: 'auto', paddingTop: spacing.xl, gap: 10 },
   btnPrimary: {
@@ -222,6 +292,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnPrimaryText: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.bg },
-  btnGhost: { paddingVertical: 12, alignItems: 'center' },
-  btnGhostText: { fontFamily: fonts.sans, fontSize: 14, color: colors.gray3 },
 });

@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-
-import { DMSans_400Regular }  from '@expo-google-fonts/dm-sans/';
-import { DMSans_500Medium }   from '@expo-google-fonts/dm-sans/';
-import { DMSans_600SemiBold } from '@expo-google-fonts/dm-sans/';
-import { DMSans_700Bold }     from '@expo-google-fonts/dm-sans/';
-
-import {
-  DMSerifDisplay_400Regular,
-  DMSerifDisplay_400Regular_Italic,
-} from '@expo-google-fonts/dm-serif-display';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
+import { DMSerifDisplay_400Regular, DMSerifDisplay_400Regular_Italic } from '@expo-google-fonts/dm-serif-display';
 import * as Font from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
 import { initDatabase } from '@/db/database';
@@ -19,30 +11,34 @@ import { colors } from '@/constants/theme';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     async function prepare() {
-      await Font.loadAsync({
-        DMSans_400Regular,
-        DMSans_500Medium,
-        DMSans_600SemiBold,
-        DMSans_700Bold,
-        DMSerifDisplay_400Regular,
-        DMSerifDisplay_400Regular_Italic,
-      });
-
-      initDatabase();
-
-      const isReturningUser = hasUser();
-      setReady(true);
-
-      if (!isReturningUser) {
-        router.replace('/onboarding');
+      try {
+        initDatabase();
+        setIsNewUser(!hasUser());
+        await Font.loadAsync({
+          DMSans_400Regular,
+          DMSans_500Medium,
+          DMSans_700Bold,
+          DMSerifDisplay_400Regular,
+          DMSerifDisplay_400Regular_Italic,
+        });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setReady(true);
       }
     }
-
     prepare();
   }, []);
+
+  useEffect(() => {
+    if (ready && isNewUser) {
+      router.replace('/onboarding');
+    }
+  }, [ready, isNewUser]);
 
   if (!ready) {
     return (

@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { getUser, updateUser } from '@/db/users';
+import db from '@/db/database';
 
 export default function Profilo() {
   const [nome, setNome] = useState('');
@@ -11,6 +12,7 @@ export default function Profilo() {
   const [peso, setPeso] = useState('');
   const [altezza, setAltezza] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dbLog, setDbLog] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,13 +38,48 @@ export default function Profilo() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleResetDB = () => {
+    Alert.alert(
+      'Reset dati',
+      'Tutti i dati verranno cancellati. Sei sicuro?',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Reset', style: 'destructive',
+          onPress: () => {
+            db.execSync('DELETE FROM workout_sets');
+            db.execSync('DELETE FROM workouts');
+            db.execSync('DELETE FROM users');
+            router.replace('/onboarding');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLogDB = () => {
+    const users = db.getAllSync('SELECT * FROM users');
+    const workouts = db.getAllSync('SELECT * FROM workouts');
+    const sets = db.getAllSync('SELECT * FROM workout_sets');
+    const output = [
+      '── USERS ──',
+      JSON.stringify(users, null, 2),
+      '── WORKOUTS ──',
+      JSON.stringify(workouts, null, 2),
+      '── SETS ──',
+      JSON.stringify(sets, null, 2),
+    ].join('\n');
+    console.log(output);
+    setDbLog(output);
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Profilo</Text>
 
         <Field label="Nome" required value={nome} onChange={setNome} placeholder="Il tuo nome" />
-        <Field label="Data di nascita" value={nascita} onChange={setNascita} placeholder="GG/MM/AAAA" unit="" />
+        <Field label="Data di nascita" value={nascita} onChange={setNascita} placeholder="GG/MM/AAAA" />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
             <Field label="Peso" value={peso} onChange={setPeso} placeholder="75" unit="kg" numeric />
@@ -55,6 +92,23 @@ export default function Profilo() {
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
           <Text style={styles.saveBtnText}>{saved ? 'Salvato ✓' : 'Salva modifiche'}</Text>
         </TouchableOpacity>
+
+        {/* ── Debug DB ── */}
+        <View style={styles.debugSection}>
+          <Text style={styles.debugTitle}>Debug</Text>
+          <TouchableOpacity style={styles.debugBtn} onPress={handleLogDB} activeOpacity={0.8}>
+            <Text style={styles.debugBtnText}>Mostra contenuto DB</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.debugBtn, styles.debugBtnDanger]} onPress={handleResetDB} activeOpacity={0.8}>
+            <Text style={styles.debugBtnDangerText}>Reset tutti i dati</Text>
+          </TouchableOpacity>
+          {dbLog && (
+            <ScrollView style={styles.debugLog} nestedScrollEnabled>
+              <Text style={styles.debugLogText}>{dbLog}</Text>
+            </ScrollView>
+          )}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -95,7 +149,53 @@ const styles = StyleSheet.create({
     paddingVertical: 20, alignItems: 'center', marginTop: spacing.lg,
   },
   saveBtnText: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.bg },
-});
+
+  debugSection: {
+    marginTop: spacing.xxl,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.lg,
+  },
+  debugTitle: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 11,
+    color: colors.gray3,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: spacing.md,
+  },
+  debugBtn: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  debugBtnText: { fontFamily: fonts.sans, fontSize: 14, color: colors.gray3 },
+  debugBtnDanger: {
+    borderColor: 'rgba(255,80,80,0.3)',
+    marginTop: 8,
+  },
+  debugBtnDangerText: {
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    color: '#FF6B6B',
+  },
+  debugLog: {
+    marginTop: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    padding: 14,
+    maxHeight: 300,
+  },
+  debugLogText: {
+  fontFamily: fonts.sans,
+  fontSize: 11,
+  color: colors.gray2,
+  lineHeight: 18,
+  },
+ }
+);
 
 const fieldStyles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },

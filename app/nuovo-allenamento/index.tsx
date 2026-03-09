@@ -7,11 +7,16 @@ import { getUser } from '@/db/users';
 
 const SPORTS = [
   { id: 'Palestra', icon: '🏋️', available: true },
-  { id: 'Corsa', icon: '🏃', available: false },
+  { id: 'Corsa', icon: '🏃', available: true },
   { id: 'Ciclismo', icon: '🚴', available: false },
   { id: 'Sci', icon: '⛷️', available: false },
   { id: 'Altro', icon: '···', available: false },
 ];
+
+const ROUTES: Record<string, string> = {
+  Palestra: '/nuovo-allenamento/esercizi',
+  Corsa: '/nuovo-allenamento/corsa',
+};
 
 export default function SceltaSport() {
   const user = getUser();
@@ -21,7 +26,6 @@ export default function SceltaSport() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll}>
 
-        {/* Header */}
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
           <Text style={styles.backText}>← Indietro</Text>
         </TouchableOpacity>
@@ -30,7 +34,6 @@ export default function SceltaSport() {
           Cosa facciamo{'\n'}oggi, <Text style={styles.titleItalic}>{nome}?</Text>
         </Text>
 
-        {/* Sport list */}
         <View style={styles.list}>
           {SPORTS.map(s => (
             <SportCard
@@ -38,10 +41,12 @@ export default function SceltaSport() {
               label={s.id}
               icon={s.icon}
               available={s.available}
-              onPress={() => router.push({
-                pathname: '/nuovo-allenamento/palestra',
-                params: { sport: s.id },
-              })}
+              onPress={() => {
+                if (!s.available) return;
+                const pathname = ROUTES[s.id];
+                if (!pathname) return;
+                router.push({ pathname: pathname as any, params: { sport: s.id } });
+              }}
             />
           ))}
         </View>

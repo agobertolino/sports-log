@@ -1,94 +1,106 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, KeyboardAvoidingView, Platform,
+  TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
-import { addSet, finishWorkout, deleteWorkout } from '@/db/workouts';
+import { addSet, finishWorkout, deleteWorkout, createWorkout } from '@/db/workouts';
+import db from '@/db/database';
 
-type SetRow = {
-  id: string;
-  serie: string;
-  reps: string;
-  peso: string;
-};
+// ── Esercizi comuni (suggerimenti base) ──────────────────────
+const ESERCIZI_COMUNI = [
+  'Panca piana', 'Panca inclinata', 'Panca declinata',
+  'Croci manubri', 'Push-up', 'Dips',
+  'Lat machine', 'Rematore bilanciere', 'Rematore manubrio',
+  'Pull-up', 'Chin-up', 'Facepull', 'Pulley basso',
+  'Lento avanti', 'Alzate laterali', 'Alzate frontali',
+  'Curl bilanciere', 'Curl manubri', 'Curl martello',
+  'Tricipiti corda', 'French press', 'Kickback',
+  'Squat', 'Leg press', 'Affondi', 'Stacchi',
+  'Leg curl', 'Leg extension', 'Calf raise',
+  'Hip thrust', 'Romanian deadlift', 'Stacchi sumo',
+  'Plank', 'Crunch', 'Russian twist', 'Ab wheel',
+];
 
-type EsercizioBlock = {
-  id: string;
-  nome: string;
-  muscolo: string;
-  sets: SetRow[];
-};
+// ── Tipi ─────────────────────────────────────────────────────
+type SetRow = { id: string; reps: string; peso: string };
+type EsercizioBlock = { id: string; nome: string; sets: SetRow[]; collapsed: boolean };
 
-function makeId() {
-  return Math.random().toString(36).slice(2, 9);
+function makeId() { return Math.random().toString(36).slice(2, 9); }
+function emptySet(prev?: SetRow): SetRow {
+  return { id: makeId(), reps: prev?.reps ?? '', peso: prev?.peso ?? '' };
+}
+function newEsercizio(): EsercizioBlock {
+  return { id: makeId(), nome: '', sets: [emptySet()], collapsed: false };
 }
 
-function emptySet(): SetRow {
-  return { id: makeId(), serie: '1', reps: '', peso: '' };
-}
-
-function emptyEsercizio(muscolo: string): EsercizioBlock {
-  return { id: makeId(), nome: '', muscolo, sets: [emptySet()] };
-}
-
+// ── Componente principale ─────────────────────────────────────
 export default function Esercizi() {
-  const { workoutId, muscoli } = useLocalSearchParams<{
-    workoutId: string;
-    muscoli: string;
-  }>();
+  const { sport } = useLocalSearchParams<{ sport: string }>();
+  const [workoutId, setWorkoutId] = useState<number | null>(null);
+  const [esercizi, setEsercizi] = useState<EsercizioBlock[]>([newEsercizio()]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeInput, setActiveInput] = useState<string | null>(null);
+  const [pastNames, setPastNames] = useState<string[]>([]);
+  const startTime = useRef(Date.now());
 
-  const muscoliList = muscoli ? muscoli.split(',') : [];
-  const firstMuscolo = muscoliList[0] ?? '';
-
-  const [esercizi, setEsercizi] = useState<EsercizioBlock[]>([
-    emptyEsercizio(firstMuscolo),
-  ]);
-  const [startTime] = useState(Date.now());
-  const [elapsed, setElapsed] = useState(0);
-
-  // Timer
+  // Crea workout nel DB al mount
   useEffect(() => {
-    const t = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [startTime]);
+    const id = createWorkout({ sport: sport ?? 'Palestra', muscoli: [] });
+    setWorkoutId(id);
+  }, []);
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+  // Carica nomi esercizi dal DB (storico)
+  useEffect(() => {
+    try {
+      const rows = db.getAllSync<{ esercizio: string }>(
+        `SELECT DISTINCT esercizio FROM workout_sets ORDER BY id DESC LIMIT 100`
+      );
+      setPastNames(rows.map(r => r.esercizio));
+    } catch {}
+  }, []);
+
+  const allSuggestions = [...new Set([...pastNames, ...ESERCIZI_COMUNI])];
+
+  const getSuggestions = (query: string) => {
+    if (!query.trim() || query.length < 2) return [];
+    const q = query.toLowerCase();
+    return allSuggestions.filter(s => s.toLowerCase().includes(q)).slice(0, 6);
   };
 
-  // ── Esercizio handlers ───────────────────────────────────
-  const updateEsercizioNome = (id: string, nome: string) => {
-    setEsercizi(prev => prev.map(e => e.id === id ? { ...e, nome } : e));
-  };
-
-  const updateEsercizioMuscolo = (id: string, muscolo: string) => {
-    setEsercizi(prev => prev.map(e => e.id === id ? { ...e, muscolo } : e));
-  };
-
+  // ── Esercizio handlers ───────────────────────────────────────
   const addEsercizio = () => {
-    setEsercizi(prev => [...prev, emptyEsercizio(firstMuscolo)]);
+    setEsercizi(prev => [
+      newEsercizio(),
+      ...prev.map(e => ({ ...e, collapsed: true })),
+    ]);
   };
 
-  const removeEsercizio = (id: string) => {
-    if (esercizi.length === 1) return;
-    setEsercizi(prev => prev.filter(e => e.id !== id));
+  const toggleCollapse = (id: string) => {
+    setEsercizi(prev => prev.map(e =>
+      e.id === id ? { ...e, collapsed: !e.collapsed } : e
+    ));
   };
 
-  // ── Set handlers ─────────────────────────────────────────
-  const updateSet = (esId: string, setId: string, field: keyof SetRow, value: string) => {
+  const updateNome = (id: string, nome: string) => {
+    setEsercizi(prev => prev.map(e => e.id === id ? { ...e, nome } : e));
+    setSuggestions(getSuggestions(nome));
+    setActiveInput(id);
+  };
+
+  const selectSuggestion = (esId: string, nome: string) => {
+    setEsercizi(prev => prev.map(e => e.id === esId ? { ...e, nome } : e));
+    setSuggestions([]);
+    setActiveInput(null);
+  };
+
+  // ── Set handlers ─────────────────────────────────────────────
+  const updateSet = (esId: string, setId: string, field: 'reps' | 'peso', value: string) => {
     setEsercizi(prev => prev.map(e => {
       if (e.id !== esId) return e;
-      return {
-        ...e,
-        sets: e.sets.map(s => s.id === setId ? { ...s, [field]: value } : s),
-      };
+      return { ...e, sets: e.sets.map(s => s.id === setId ? { ...s, [field]: value } : s) };
     }));
   };
 
@@ -96,15 +108,8 @@ export default function Esercizi() {
     setEsercizi(prev => prev.map(e => {
       if (e.id !== esId) return e;
       const lastSet = e.sets[e.sets.length - 1];
-      return {
-        ...e,
-        sets: [...e.sets, {
-          id: makeId(),
-          serie: String(e.sets.length + 1),
-          reps: lastSet?.reps ?? '',
-          peso: lastSet?.peso ?? '',
-        }],
-      };
+      if (!lastSet.reps.trim() && !lastSet.peso.trim()) return e; // blocca se vuota
+      return { ...e, sets: [...e.sets, emptySet(lastSet)] };
     }));
   };
 
@@ -115,52 +120,43 @@ export default function Esercizi() {
     }));
   };
 
-  // ── Finish workout ────────────────────────────────────────
+  // ── Fine allenamento ──────────────────────────────────────────
   const handleFinish = () => {
-    const id = parseInt(workoutId ?? '0');
-    if (!id) { router.replace('/(tabs)'); return; }
-
-    const hasAnyValidSet = esercizi.some(
+    if (!workoutId) return;
+    const hasAny = esercizi.some(
       es => es.nome.trim() && es.sets.some(s => s.reps.trim() || s.peso.trim())
     );
-    if (!hasAnyValidSet) {
-      Alert.alert(
-        'Allenamento vuoto',
-        'Aggiungi almeno un esercizio con un nome e una serie prima di finire.'
-      );
+    if (!hasAny) {
+      Alert.alert('Allenamento vuoto', 'Aggiungi almeno un esercizio con una serie.');
       return;
     }
-
-    // Save all sets to DB
     esercizi.forEach(es => {
       if (!es.nome.trim()) return;
-      es.sets.forEach(s => {
+      es.sets.forEach((s, i) => {
         addSet({
-          workout_id: id,
+          workout_id: workoutId,
           esercizio: es.nome.trim(),
-          muscolo: es.muscolo || undefined,
-          serie: s.serie ? parseInt(s.serie) : undefined,
+          serie: i + 1,
           reps: s.reps ? parseInt(s.reps) : undefined,
           peso_kg: s.peso ? parseFloat(s.peso) : undefined,
         });
       });
     });
-
-    finishWorkout(id, elapsed);
+    const elapsed = Math.floor((Date.now() - startTime.current) / 1000);
+    finishWorkout(workoutId, elapsed);
     router.replace('/(tabs)');
   };
 
   const handleDiscard = () => {
     Alert.alert(
       'Annulla allenamento',
-      'Sei sicuro? L\'allenamento non verrà salvato.',
+      "Sei sicuro? L'allenamento non verrà salvato.",
       [
         { text: 'Continua', style: 'cancel' },
         {
           text: 'Annulla allenamento', style: 'destructive',
           onPress: () => {
-            const id = parseInt(workoutId ?? '0');
-            if (id) deleteWorkout(id);
+            if (workoutId) deleteWorkout(workoutId);
             router.replace('/(tabs)');
           },
         },
@@ -168,152 +164,156 @@ export default function Esercizi() {
     );
   };
 
+  // ── Render ────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleDiscard}>
+          <Text style={styles.headerCancel}>Annulla</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{sport ?? 'Palestra'}</Text>
+        <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
+          <Text style={styles.finishBtnText}>Fine</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleDiscard}>
-            <Text style={styles.headerDiscard}>Annulla</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTimer}>{formatTime(elapsed)}</Text>
-          <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
-            <Text style={styles.finishBtnText}>Fine</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ── Aggiungi esercizio (in cima) ── */}
+        <TouchableOpacity style={styles.addEsercizioBtn} onPress={addEsercizio}>
+          <Text style={styles.addEsercizioBtnText}>+ Aggiungi esercizio</Text>
+        </TouchableOpacity>
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Muscolo pills */}
-          {muscoliList.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.muscoliRow}
-              contentContainerStyle={{ gap: 8, paddingRight: spacing.lg }}
-            >
-              {muscoliList.map(m => (
-                <View key={m} style={styles.muscoloPill}>
-                  <Text style={styles.muscoloPillText}>{m}</Text>
+        {/* ── Lista esercizi ── */}
+        {esercizi.map((es) => (
+          <View key={es.id}>
+            {es.collapsed ? (
+              // ── Card collassata ──
+              <TouchableOpacity
+                style={styles.collapsedCard}
+                onPress={() => toggleCollapse(es.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.collapsedRow}>
+                  <Text style={styles.collapsedName} numberOfLines={1}>
+                    {es.nome || 'Esercizio senza nome'}
+                  </Text>
+                  <Text style={styles.collapsedChevron}>›</Text>
                 </View>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Esercizi */}
-          {esercizi.map((es, esIndex) => (
-            <View key={es.id} style={styles.esercizioCard}>
-
-              {/* Esercizio header */}
-              <View style={styles.esercizioHeader}>
+                <Text style={styles.collapsedMeta}>
+                  {es.sets.length} {es.sets.length === 1 ? 'serie' : 'serie'}
+                  {es.sets[0]?.peso ? ` · ${es.sets[0].peso} kg` : ''}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              // ── Card espansa ──
+              <View style={styles.esercizioCard}>
+                {/* Nome + autocomplete */}
                 <TextInput
                   style={styles.esercizioNome}
                   placeholder="Nome esercizio"
                   placeholderTextColor={colors.gray3}
                   value={es.nome}
-                  onChangeText={v => updateEsercizioNome(es.id, v)}
+                  onChangeText={v => updateNome(es.id, v)}
+                  onFocus={() => {
+                    setSuggestions(getSuggestions(es.nome));
+                    setActiveInput(es.id);
+                  }}
+                  onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+                  returnKeyType="done"
                 />
+
+                {/* Suggerimenti autocomplete */}
+                {activeInput === es.id && suggestions.length > 0 && (
+                  <View style={styles.suggestionsBox}>
+                    {suggestions.map((s, i) => (
+                      <TouchableOpacity
+                        key={s}
+                        style={[
+                          styles.suggestionItem,
+                          i === suggestions.length - 1 && { borderBottomWidth: 0 },
+                        ]}
+                        onPress={() => selectSuggestion(es.id, s)}
+                      >
+                        <Text style={styles.suggestionText}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Header colonne serie */}
+                <View style={styles.setHeaderRow}>
+                  <Text style={[styles.setHeaderCell, { width: 32 }]}>SET</Text>
+                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>KG</Text>
+                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>REPS</Text>
+                  <View style={{ width: 24 }} />
+                </View>
+
+                {/* Serie */}
+                {es.sets.map((s, sIndex) => (
+                  <View key={s.id} style={styles.setRow}>
+                    <View style={styles.setNumber}>
+                      <Text style={styles.setNumberText}>{sIndex + 1}</Text>
+                    </View>
+                    <TextInput
+                      style={[styles.setInput, { flex: 1 }]}
+                      placeholder="—"
+                      placeholderTextColor={colors.gray3}
+                      value={s.peso}
+                      onChangeText={v => updateSet(es.id, s.id, 'peso', v)}
+                      keyboardType="decimal-pad"
+                    />
+                    <TextInput
+                      style={[styles.setInput, { flex: 1 }]}
+                      placeholder="—"
+                      placeholderTextColor={colors.gray3}
+                      value={s.reps}
+                      onChangeText={v => updateSet(es.id, s.id, 'reps', v)}
+                      keyboardType="number-pad"
+                    />
+                    <TouchableOpacity
+                      onPress={() => removeSet(es.id, s.id)}
+                      hitSlop={10}
+                      style={styles.removeSetBtn}
+                    >
+                      <Text style={styles.removeSetIcon}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {/* Aggiungi serie */}
+                <TouchableOpacity
+                  style={styles.addSetBtn}
+                  onPress={() => addSetToEsercizio(es.id)}
+                >
+                  <Text style={styles.addSetText}>+ Aggiungi serie</Text>
+                </TouchableOpacity>
+
+                {/* Collassa */}
                 {esercizi.length > 1 && (
-                  <TouchableOpacity onPress={() => removeEsercizio(es.id)} hitSlop={12}>
-                    <Text style={styles.removeIcon}>✕</Text>
+                  <TouchableOpacity
+                    style={styles.collapseBtn}
+                    onPress={() => toggleCollapse(es.id)}
+                  >
+                    <Text style={styles.collapseBtnText}>Riduci ↑</Text>
                   </TouchableOpacity>
                 )}
               </View>
-
-              {/* Muscolo selector */}
-              {muscoliList.length > 1 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginBottom: 16 }}
-                  contentContainerStyle={{ gap: 6 }}
-                >
-                  {muscoliList.map(m => (
-                    <TouchableOpacity
-                      key={m}
-                      style={[styles.muscSel, es.muscolo === m && styles.muscSelActive]}
-                      onPress={() => updateEsercizioMuscolo(es.id, m)}
-                    >
-                      <Text style={[styles.muscSelText, es.muscolo === m && styles.muscSelTextActive]}>
-                        {m}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-
-              {/* Set column headers */}
-              <View style={styles.setHeaderRow}>
-                <Text style={[styles.setHeaderCell, { width: 36 }]}>SET</Text>
-                <Text style={[styles.setHeaderCell, { flex: 1 }]}>KG</Text>
-                <Text style={[styles.setHeaderCell, { flex: 1 }]}>REPS</Text>
-                <View style={{ width: 28 }} />
-              </View>
-
-              {/* Sets */}
-              {es.sets.map((s, sIndex) => (
-                <View key={s.id} style={styles.setRow}>
-                  <View style={styles.setNumber}>
-                    <Text style={styles.setNumberText}>{sIndex + 1}</Text>
-                  </View>
-                  <TextInput
-                    style={[styles.setInput, { flex: 1 }]}
-                    placeholder="—"
-                    placeholderTextColor={colors.gray3}
-                    value={s.peso}
-                    onChangeText={v => updateSet(es.id, s.id, 'peso', v)}
-                    keyboardType="decimal-pad"
-                  />
-                  <TextInput
-                    style={[styles.setInput, { flex: 1 }]}
-                    placeholder="—"
-                    placeholderTextColor={colors.gray3}
-                    value={s.reps}
-                    onChangeText={v => updateSet(es.id, s.id, 'reps', v)}
-                    keyboardType="number-pad"
-                  />
-                  <TouchableOpacity
-                    style={styles.removeSetBtn}
-                    onPress={() => removeSet(es.id, s.id)}
-                    hitSlop={10}
-                  >
-                    <Text style={styles.removeSetIcon}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-
-              {/* Add set */}
-              <TouchableOpacity
-                style={styles.addSetBtn}
-                onPress={() => addSetToEsercizio(es.id)}
-              >
-                <Text style={styles.addSetText}>+ Aggiungi serie</Text>
-              </TouchableOpacity>
-
-            </View>
-          ))}
-
-          {/* Add esercizio */}
-          <TouchableOpacity style={styles.addEsercizioBtn} onPress={addEsercizio}>
-            <Text style={styles.addEsercizioBtnText}>+ Aggiungi esercizio</Text>
-          </TouchableOpacity>
-
-        </ScrollView>
-      </KeyboardAvoidingView>
+            )}
+          </View>
+        ))}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ── Stili ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -323,71 +323,96 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerDiscard: { fontFamily: fonts.sans, fontSize: 15, color: colors.gray3 },
-  headerTimer: { fontFamily: fonts.serifItalic, fontSize: 22, color: colors.white },
+  headerCancel: { fontFamily: fonts.sans, fontSize: 15, color: colors.gray3 },
+  headerTitle: { fontFamily: fonts.sansMedium, fontSize: 16, color: colors.white },
   finishBtn: {
     backgroundColor: colors.white,
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
-  finishBtnText: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: colors.bg },
+  finishBtnText: { fontFamily: fonts.sansBold, fontSize: 14, color: colors.bg },
 
   scroll: { padding: spacing.lg, paddingBottom: 60 },
 
-  // Muscoli pills
-  muscoliRow: { marginBottom: spacing.lg },
-  muscoloPill: {
-    backgroundColor: colors.gray4,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+  // Aggiungi esercizio (top)
+  addEsercizioBtn: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.white,
+    borderRadius: radius.lg,
+    marginBottom: 14,
   },
-  muscoloPillText: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.gray2 },
+  addEsercizioBtnText: { fontFamily: fonts.sansMedium, fontSize: 15, color: colors.white },
 
-  // Esercizio card
+  // Card collassata
+  collapsedCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  collapsedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  collapsedName: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 16,
+    color: colors.white,
+    flex: 1,
+  },
+  collapsedChevron: { color: colors.gray3, fontSize: 20, marginLeft: 8 },
+  collapsedMeta: { fontFamily: fonts.sans, fontSize: 12, color: colors.gray3, marginTop: 4 },
+
+  // Card espansa
   esercizioCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: 18,
-    marginBottom: 14,
-  },
-  esercizioHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   esercizioNome: {
-    flex: 1,
     fontFamily: fonts.sansMedium,
     fontSize: 17,
     color: colors.white,
-    padding: 0,
+    paddingVertical: 4,
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  removeIcon: { fontSize: 14, color: colors.gray3, paddingLeft: 12 },
 
-  // Muscolo selector chips
-  muscSel: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  // Autocomplete
+  suggestionsBox: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
-  muscSelActive: { borderColor: colors.white, backgroundColor: colors.white },
-  muscSelText: { fontFamily: fonts.sans, fontSize: 12, color: colors.gray3 },
-  muscSelTextActive: { color: colors.bg, fontFamily: fonts.sansSemiBold },
+  suggestionItem: {
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionText: { fontFamily: fonts.sans, fontSize: 14, color: colors.white },
 
-  // Sets
+  // Header colonne
   setHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 8,
-    paddingHorizontal: 2,
+    marginTop: 10,
   },
   setHeaderCell: {
     fontFamily: fonts.sansMedium,
@@ -396,6 +421,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textAlign: 'center',
   },
+
+  // Riga serie
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -403,8 +430,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   setNumber: {
-    width: 36, height: 36,
-    backgroundColor: colors.gray4,
+    width: 32, height: 36,
+    backgroundColor: colors.bg,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -422,11 +449,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     textAlign: 'center',
   },
-  removeSetBtn: {
-    width: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  removeSetBtn: { width: 24, alignItems: 'center', justifyContent: 'center' },
   removeSetIcon: { fontSize: 12, color: colors.gray4 },
 
   addSetBtn: {
@@ -440,15 +463,6 @@ const styles = StyleSheet.create({
   },
   addSetText: { fontFamily: fonts.sans, fontSize: 13, color: colors.gray3 },
 
-  // Add esercizio
-  addEsercizioBtn: {
-    paddingVertical: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderStyle: 'dashed',
-    marginTop: 4,
-  },
-  addEsercizioBtnText: { fontFamily: fonts.sansMedium, fontSize: 15, color: colors.gray2 },
+  collapseBtn: { marginTop: 12, alignItems: 'center' },
+  collapseBtnText: { fontFamily: fonts.sans, fontSize: 12, color: colors.gray3 },
 });

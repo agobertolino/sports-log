@@ -21,8 +21,7 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-asset",
-      "expo-font"
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
