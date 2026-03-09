@@ -4,11 +4,12 @@ import { router } from 'expo-router';
 import { colors, fonts, spacing } from '@/constants/theme';
 import SportCard from '@/components/SportCard';
 import { getUser } from '@/db/users';
+import Ciclismo from './ciclismo';
 
 const SPORTS = [
   { id: 'Palestra', icon: '🏋️', available: true },
   { id: 'Corsa', icon: '🏃', available: true },
-  { id: 'Ciclismo', icon: '🚴', available: false },
+  { id: 'Ciclismo', icon: '🚴', available: true },
   { id: 'Sci', icon: '⛷️', available: false },
   { id: 'Altro', icon: '···', available: false },
 ];
@@ -16,6 +17,7 @@ const SPORTS = [
 const ROUTES: Record<string, string> = {
   Palestra: '/nuovo-allenamento/esercizi',
   Corsa: '/nuovo-allenamento/corsa',
+  Ciclismo: '/nuovo-allenamento/ciclismo',
 };
 
 export default function SceltaSport() {

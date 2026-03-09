@@ -35,29 +35,40 @@ export default function Palestra() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.headerCancel}>← Indietro</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{sport ?? 'Palestra'}</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-        <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Indietro</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>{sport ?? 'Palestra'}</Text>
-
-        <Text style={styles.sectionLabel}>Quali muscoli alleni oggi?</Text>
-
-        <View style={styles.grid}>
-          {MUSCOLI.map((m, i) => (
-            <View key={m} style={styles.chipWrap}>
-              <MuscleChip
-                label={m}
-                selected={selected.includes(m)}
-                onPress={() => toggle(m)}
-              />
-            </View>
-          ))}
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>Muscoli allenati</Text>
+          <View style={styles.grid}>
+            {MUSCOLI.map(m => (
+              <View key={m} style={styles.chipWrap}>
+                <MuscleChip
+                  label={m}
+                  selected={selected.includes(m)}
+                  onPress={() => toggle(m)}
+                />
+              </View>
+            ))}
+          </View>
         </View>
 
-        <Button label="Inizia allenamento" onPress={handleStart} disabled={selected.length === 0} arrow />
+        <View style={styles.ctaWrap}>
+          <Button
+            label="Inizia allenamento"
+            onPress={handleStart}
+            disabled={selected.length === 0}
+            arrow
+          />
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -66,15 +77,35 @@ export default function Palestra() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { flexGrow: 1, padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: 40 },
-  back: { marginBottom: spacing.lg },
-  backText: { fontFamily: fonts.sans, fontSize: 14, color: colors.gray3 },
-  title: { fontFamily: fonts.serif, fontSize: 32, color: colors.white, marginBottom: spacing.xl },
-  sectionLabel: {
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerCancel: { fontFamily: fonts.sans, fontSize: 15, color: colors.gray3 },
+  headerTitle: { fontFamily: fonts.sansMedium, fontSize: 16, color: colors.white },
+  headerSpacer: { width: 60 },
+
+  scroll: { padding: spacing.lg, paddingBottom: 60 },
+
+  card: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: 20,
+    marginBottom: spacing.md,
+  },
+  fieldLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: 11,
     color: colors.gray3,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: spacing.md,
   },
@@ -82,15 +113,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: spacing.xl,
   },
   chipWrap: { width: '47.5%' },
-  startBtn: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  startBtnDisabled: { opacity: 0.3 },
-  startBtnText: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.bg },
+
+  ctaWrap: { marginTop: spacing.sm },
 });
