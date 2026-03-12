@@ -4,14 +4,14 @@ import { router } from 'expo-router';
 import { colors, fonts, spacing } from '@/constants/theme';
 import SportCard from '@/components/SportCard';
 import { getUser } from '@/db/users';
-import Ciclismo from './ciclismo';
+import i18n from '@/i18n';
 
 const SPORTS = [
-  { id: 'Palestra', icon: '🏋️', available: true },
-  { id: 'Corsa', icon: '🏃', available: false },
-  { id: 'Ciclismo', icon: '🚴', available: false },
-  { id: 'Sci', icon: '⛷️', available: false },
-  { id: 'Altro', icon: '···', available: false },
+  { id: 'Palestra', icon: '🏋️‍♂️', available: true, labelKey: 'nuovoAllenamento.palestra' },
+  { id: 'Corsa', icon: '🏃‍♂️', available: false, labelKey: 'nuovoAllenamento.corsa' },
+  { id: 'Ciclismo', icon: '🚴‍♂️', available: false, labelKey: 'nuovoAllenamento.ciclismo' },
+  { id: 'Sci', icon: '⛷️', available: false, labelKey: 'nuovoAllenamento.sci' },
+  { id: 'Altro', icon: '🎯', available: false, labelKey: 'nuovoAllenamento.altro' },
 ];
 
 const ROUTES: Record<string, string> = {
@@ -22,25 +22,25 @@ const ROUTES: Record<string, string> = {
 
 export default function SceltaSport() {
   const user = getUser();
-  const nome = user?.nome ?? 'atleta';
+  const nome = user?.nome ?? i18n.t('common.athlete');
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll}>
 
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Indietro</Text>
+          <Text style={styles.backText}>{i18n.t('common.back')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.title}>
-          Cosa facciamo{'\n'}oggi, <Text style={styles.titleItalic}>{nome}?</Text>
+          {i18n.t('nuovoAllenamento.whatDoWeDo')}<Text style={styles.titleItalic}>{nome}?</Text>
         </Text>
 
         <View style={styles.list}>
           {SPORTS.map(s => (
             <SportCard
               key={s.id}
-              label={s.id}
+              label={i18n.t(s.labelKey)}
               icon={s.icon}
               available={s.available}
               onPress={() => {

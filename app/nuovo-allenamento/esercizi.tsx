@@ -6,22 +6,53 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
-import { addSet, finishWorkout, deleteWorkout, createWorkout } from '@/db/workouts';
+import { addSet, finishWorkout, deleteWorkout, createWorkout, getWorkoutById, getSetsForWorkout } from '@/db/workouts';
 import db from '@/db/database';
+import i18n from '@/i18n';
 
 // ── Esercizi comuni (suggerimenti base) ──────────────────────
 const ESERCIZI_COMUNI = [
-  'Panca piana', 'Panca inclinata', 'Panca declinata',
-  'Croci manubri', 'Push-up', 'Dips',
-  'Lat machine', 'Rematore bilanciere', 'Rematore manubrio',
-  'Pull-up', 'Chin-up', 'Facepull', 'Pulley basso',
-  'Lento avanti', 'Alzate laterali', 'Alzate frontali',
-  'Curl bilanciere', 'Curl manubri', 'Curl martello',
-  'Tricipiti corda', 'French press', 'Kickback',
-  'Squat', 'Leg press', 'Affondi', 'Stacchi',
-  'Leg curl', 'Leg extension', 'Calf raise',
-  'Hip thrust', 'Romanian deadlift', 'Stacchi sumo',
-  'Plank', 'Crunch', 'Russian twist', 'Ab wheel',
+  // Chest
+  'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
+  'Dumbbell Fly', 'Cable Fly', 'Push-Up', 'Dips', 'Chest Press Machine',
+  'Pec Deck', 'Landmine Press',
+
+  // Back
+  'Lat Pulldown', 'Barbell Row', 'Dumbbell Row',
+  'Pull-Up', 'Chin-Up', 'Face Pull', 'Cable Row', 'Seated Cable Row',
+  'T-Bar Row', 'Meadows Row', 'Straight-Arm Pulldown', 'Shrugs',
+
+  // Shoulders
+  'Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press',
+  'Lateral Raise', 'Front Raise', 'Rear Delt Fly', 'Upright Row',
+  'Cable Lateral Raise', 'Machine Shoulder Press',
+
+  // Biceps
+  'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl',
+  'Preacher Curl', 'Cable Curl', 'Concentration Curl',
+  'Incline Dumbbell Curl', 'Spider Curl', 'Reverse Curl',
+
+  // Triceps
+  'Tricep Pushdown', 'French Press', 'Kickback',
+  'Overhead Tricep Extension', 'Close-Grip Bench Press',
+  'Skull Crusher', 'Cable Overhead Extension', 'Diamond Push-Up',
+
+  // Legs
+  'Squat', 'Front Squat', 'Goblet Squat', 'Hack Squat',
+  'Leg Press', 'Lunge', 'Bulgarian Split Squat',
+  'Deadlift', 'Romanian Deadlift', 'Sumo Deadlift', 'Stiff-Leg Deadlift',
+  'Leg Curl', 'Leg Extension', 'Calf Raise', 'Seated Calf Raise',
+  'Hip Thrust', 'Glute Bridge', 'Step-Up', 'Box Jump',
+  'Nordic Curl', 'Leg Press Calf Raise',
+
+  // Core
+  'Plank', 'Side Plank', 'Crunch', 'Russian Twist', 'Ab Wheel',
+  'Hanging Leg Raise', 'Cable Crunch', 'Bicycle Crunch',
+  'Dead Bug', 'Pallof Press', 'Dragon Flag', 'Toes to Bar',
+
+  // Olympic / Compound
+  'Clean and Press', 'Power Clean', 'Snatch', 'Thruster',
+  'Farmer Walk', 'Sled Push', 'Battle Ropes', 'Kettlebell Swing',
 ];
 
 // ── Tipi ─────────────────────────────────────────────────────
@@ -36,9 +67,8 @@ function newEsercizio(): EsercizioBlock {
   return { id: makeId(), nome: '', sets: [emptySet()], collapsed: false };
 }
 
-// ── Componente principale ─────────────────────────────────────
 export default function Esercizi() {
-  const { sport } = useLocalSearchParams<{ sport: string }>();
+  const { sport, workoutId: paramWorkoutId, isResume } = useLocalSearchParams<{ sport: string, workoutId?: string, isResume?: string }>();
   const [workoutId, setWorkoutId] = useState<number | null>(null);
   const [esercizi, setEsercizi] = useState<EsercizioBlock[]>([newEsercizio()]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -46,11 +76,83 @@ export default function Esercizi() {
   const [pastNames, setPastNames] = useState<string[]>([]);
   const startTime = useRef(Date.now());
 
-  // Crea workout nel DB al mount
+  // Caricamento / Ripristino
   useEffect(() => {
-    const id = createWorkout({ sport: sport ?? 'Palestra', muscoli: [] });
-    setWorkoutId(id);
-  }, []);
+    if (!sport && !paramWorkoutId) return;
+    if (workoutId !== null) return;
+
+    if (paramWorkoutId) {
+      const id = parseInt(paramWorkoutId);
+      setWorkoutId(id);
+      
+      if (isResume === '1') {
+        // Ripristina da SQLite reale (tabella workout_sets)
+        const setsFromDb = getSetsForWorkout(id);
+        if (setsFromDb.length > 0) {
+          const grouped: Record<string, SetRow[]> = {};
+          const order: string[] = [];
+          
+          setsFromDb.forEach(row => {
+            if (!grouped[row.esercizio]) {
+              grouped[row.esercizio] = [];
+              order.push(row.esercizio);
+            }
+            grouped[row.esercizio].push({
+              id: makeId(),
+              reps: row.reps !== null ? String(row.reps) : '',
+              peso: row.peso_kg !== null ? String(row.peso_kg) : ''
+            });
+          });
+          
+          const loadedEsercizi = order.map(nome => ({
+            id: makeId(),
+            nome,
+            sets: grouped[nome],
+            collapsed: true // Li teniamo collassati per pulizia visiva
+          }));
+          
+          // Espandi l'ultimo se esiste
+          if (loadedEsercizi.length > 0) {
+            loadedEsercizi[loadedEsercizi.length - 1].collapsed = false;
+          }
+          
+          setEsercizi(loadedEsercizi);
+        }
+      }
+    } else {
+      const id = createWorkout({ sport: sport ?? i18n.t('esercizi.palestra'), muscoli: [] });
+      setWorkoutId(id);
+    }
+  }, [paramWorkoutId, sport, isResume, workoutId]);
+
+  // Sincronizzazione continua in SQL
+  // "tutte le volte che scrivo qualcosa in un esercizio devi scriverlo su sql"
+  useEffect(() => {
+    if (!workoutId) return;
+    const t = setTimeout(() => {
+      try {
+        db.withTransactionSync(() => {
+          // Rimuovi vecchi set
+          db.runSync('DELETE FROM workout_sets WHERE workout_id = ?', [workoutId]);
+          // Inserisci i nuovi (solo quelli con un nome esercizio compilato)
+          esercizi.forEach(es => {
+            if (!es.nome.trim()) return;
+            es.sets.forEach((s, i) => {
+              // Salviamo anche se vuoto, così manteniamo il numero di serie
+              db.runSync(
+                'INSERT INTO workout_sets (workout_id, esercizio, serie, reps, peso_kg) VALUES (?, ?, ?, ?, ?)',
+                [workoutId, es.nome.trim(), i + 1, s.reps ? parseInt(s.reps) : null, s.peso ? parseFloat(s.peso) : null]
+              );
+            });
+          });
+        });
+      } catch (e) {
+        console.error('Salvataggio live fallito:', e);
+      }
+    }, 600); // Debounce di 600ms per non bloccare la UI mentre si digita
+    
+    return () => clearTimeout(t);
+  }, [esercizi, workoutId]);
 
   // Carica nomi esercizi dal DB (storico)
   useEffect(() => {
@@ -70,8 +172,16 @@ export default function Esercizi() {
     return allSuggestions.filter(s => s.toLowerCase().includes(q)).slice(0, 6);
   };
 
-  // ── Esercizio handlers ───────────────────────────────────────
   const addEsercizio = () => {
+    const hasEmpty = esercizi.some(es => 
+      !es.nome.trim() && es.sets.every(s => !s.reps.trim() && !s.peso.trim())
+    );
+
+    if (hasEmpty) {
+      Alert.alert(i18n.t('esercizi.attention'), i18n.t('esercizi.emptyExercise'));
+      return;
+    }
+
     setEsercizi(prev => [
       newEsercizio(),
       ...prev.map(e => ({ ...e, collapsed: true })),
@@ -96,7 +206,6 @@ export default function Esercizi() {
     setActiveInput(null);
   };
 
-  // ── Set handlers ─────────────────────────────────────────────
   const updateSet = (esId: string, setId: string, field: 'reps' | 'peso', value: string) => {
     setEsercizi(prev => prev.map(e => {
       if (e.id !== esId) return e;
@@ -108,7 +217,7 @@ export default function Esercizi() {
     setEsercizi(prev => prev.map(e => {
       if (e.id !== esId) return e;
       const lastSet = e.sets[e.sets.length - 1];
-      if (!lastSet.reps.trim() && !lastSet.peso.trim()) return e; // blocca se vuota
+      if (!lastSet.reps.trim() && !lastSet.peso.trim()) return e;
       return { ...e, sets: [...e.sets, emptySet(lastSet)] };
     }));
   };
@@ -120,28 +229,18 @@ export default function Esercizi() {
     }));
   };
 
-  // ── Fine allenamento ──────────────────────────────────────────
   const handleFinish = () => {
     if (!workoutId) return;
     const hasAny = esercizi.some(
       es => es.nome.trim() && es.sets.some(s => s.reps.trim() || s.peso.trim())
     );
     if (!hasAny) {
-      Alert.alert('Allenamento vuoto', 'Aggiungi almeno un esercizio con una serie.');
+      Alert.alert(i18n.t('esercizi.emptyWorkout'), i18n.t('esercizi.addAtLeastOne'));
       return;
     }
-    esercizi.forEach(es => {
-      if (!es.nome.trim()) return;
-      es.sets.forEach((s, i) => {
-        addSet({
-          workout_id: workoutId,
-          esercizio: es.nome.trim(),
-          serie: i + 1,
-          reps: s.reps ? parseInt(s.reps) : undefined,
-          peso_kg: s.peso ? parseFloat(s.peso) : undefined,
-        });
-      });
-    });
+    
+    // Non serve ri-salvare i sets qui, lo fa già il sync in background.
+    // Dobbiamo solo marcare il workout come completato settando la durata.
     const elapsed = Math.floor((Date.now() - startTime.current) / 1000);
     finishWorkout(workoutId, elapsed);
     router.replace('/(tabs)');
@@ -149,12 +248,12 @@ export default function Esercizi() {
 
   const handleDiscard = () => {
     Alert.alert(
-      'Annulla allenamento',
-      "Sei sicuro? L'allenamento non verrà salvato.",
+      i18n.t('esercizi.cancelWorkout'),
+      i18n.t('esercizi.cancelConfirm'),
       [
-        { text: 'Continua', style: 'cancel' },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
         {
-          text: 'Annulla allenamento', style: 'destructive',
+          text: i18n.t('esercizi.cancelWorkout'), style: 'destructive',
           onPress: () => {
             if (workoutId) deleteWorkout(workoutId);
             router.replace('/(tabs)');
@@ -164,17 +263,15 @@ export default function Esercizi() {
     );
   };
 
-  // ── Render ────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleDiscard}>
-          <Text style={styles.headerCancel}>Annulla</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.headerCancel}>{i18n.t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{sport ?? 'Palestra'}</Text>
-        <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
-          <Text style={styles.finishBtnText}>Fine</Text>
+        <Text style={styles.headerTitle}>{sport ?? i18n.t('esercizi.palestra')}</Text>
+        <TouchableOpacity onPress={handleDiscard}>
+          <Text style={styles.headerCancelRed}>{i18n.t('esercizi.deleteBtn')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -182,16 +279,13 @@ export default function Esercizi() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Aggiungi esercizio (in cima) ── */}
         <TouchableOpacity style={styles.addEsercizioBtn} onPress={addEsercizio}>
-          <Text style={styles.addEsercizioBtnText}>+ Aggiungi esercizio</Text>
+          <Text style={styles.addEsercizioBtnText}>{i18n.t('esercizi.addExercise')}</Text>
         </TouchableOpacity>
 
-        {/* ── Lista esercizi ── */}
         {esercizi.map((es) => (
           <View key={es.id}>
             {es.collapsed ? (
-              // ── Card collassata ──
               <TouchableOpacity
                 style={styles.collapsedCard}
                 onPress={() => toggleCollapse(es.id)}
@@ -199,22 +293,20 @@ export default function Esercizi() {
               >
                 <View style={styles.collapsedRow}>
                   <Text style={styles.collapsedName} numberOfLines={1}>
-                    {es.nome || 'Esercizio senza nome'}
+                    {es.nome || i18n.t('esercizi.unnamedExercise')}
                   </Text>
                   <Text style={styles.collapsedChevron}>›</Text>
                 </View>
                 <Text style={styles.collapsedMeta}>
-                  {es.sets.length} {es.sets.length === 1 ? 'serie' : 'serie'}
+                  {es.sets.length} {es.sets.length === 1 ? i18n.t('esercizi.series') : i18n.t('esercizi.series')}
                   {es.sets[0]?.peso ? ` · ${es.sets[0].peso} kg` : ''}
                 </Text>
               </TouchableOpacity>
             ) : (
-              // ── Card espansa ──
               <View style={styles.esercizioCard}>
-                {/* Nome + autocomplete */}
                 <TextInput
                   style={styles.esercizioNome}
-                  placeholder="Nome esercizio"
+                  placeholder={i18n.t('esercizi.exerciseName')}
                   placeholderTextColor={colors.gray3}
                   value={es.nome}
                   onChangeText={v => updateNome(es.id, v)}
@@ -226,7 +318,6 @@ export default function Esercizi() {
                   returnKeyType="done"
                 />
 
-                {/* Suggerimenti autocomplete */}
                 {activeInput === es.id && suggestions.length > 0 && (
                   <View style={styles.suggestionsBox}>
                     {suggestions.map((s, i) => (
@@ -244,15 +335,13 @@ export default function Esercizi() {
                   </View>
                 )}
 
-                {/* Header colonne serie */}
                 <View style={styles.setHeaderRow}>
-                  <Text style={[styles.setHeaderCell, { width: 32 }]}>SET</Text>
-                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>KG</Text>
-                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>REPS</Text>
+                  <Text style={[styles.setHeaderCell, { width: 32 }]}>{i18n.t('esercizi.set')}</Text>
+                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>{i18n.t('esercizi.kg')}</Text>
+                  <Text style={[styles.setHeaderCell, { flex: 1 }]}>{i18n.t('esercizi.reps')}</Text>
                   <View style={{ width: 24 }} />
                 </View>
 
-                {/* Serie */}
                 {es.sets.map((s, sIndex) => (
                   <View key={s.id} style={styles.setRow}>
                     <View style={styles.setNumber}>
@@ -284,33 +373,35 @@ export default function Esercizi() {
                   </View>
                 ))}
 
-                {/* Aggiungi serie */}
                 <TouchableOpacity
                   style={styles.addSetBtn}
                   onPress={() => addSetToEsercizio(es.id)}
                 >
-                  <Text style={styles.addSetText}>+ Aggiungi serie</Text>
+                  <Text style={styles.addSetText}>{i18n.t('esercizi.addSet')}</Text>
                 </TouchableOpacity>
 
-                {/* Collassa */}
                 {esercizi.length > 1 && (
                   <TouchableOpacity
                     style={styles.collapseBtn}
                     onPress={() => toggleCollapse(es.id)}
                   >
-                    <Text style={styles.collapseBtnText}>Riduci ↑</Text>
+                    <Text style={styles.collapseBtnText}>{i18n.t('esercizi.collapse')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
             )}
           </View>
         ))}
+        <View style={styles.finishWrap}>
+          <TouchableOpacity style={styles.finishBigBtn} onPress={handleFinish}>
+            <Text style={styles.finishBigBtnText}>{i18n.t('esercizi.finishWorkout')}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ── Stili ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
@@ -335,7 +426,10 @@ const styles = StyleSheet.create({
 
   scroll: { padding: spacing.lg, paddingBottom: 60 },
 
-  // Aggiungi esercizio (top)
+  headerCancelRed: { fontFamily: fonts.sans, fontSize: 15, color: '#FF3B30' },
+  finishWrap: { marginTop: spacing.md, marginBottom: 20 },
+  finishBigBtn: { backgroundColor: colors.white, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center' },
+  finishBigBtnText: { fontFamily: fonts.sansBold, fontSize: 16, color: colors.bg },
   addEsercizioBtn: {
     paddingVertical: 16,
     alignItems: 'center',
@@ -346,7 +440,6 @@ const styles = StyleSheet.create({
   },
   addEsercizioBtnText: { fontFamily: fonts.sansMedium, fontSize: 15, color: colors.white },
 
-  // Card collassata
   collapsedCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -370,7 +463,6 @@ const styles = StyleSheet.create({
   collapsedChevron: { color: colors.gray3, fontSize: 20, marginLeft: 8 },
   collapsedMeta: { fontFamily: fonts.sans, fontSize: 12, color: colors.gray3, marginTop: 4 },
 
-  // Card espansa
   esercizioCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -389,7 +481,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
 
-  // Autocomplete
   suggestionsBox: {
     backgroundColor: '#1A1A1A',
     borderRadius: 10,
@@ -406,7 +497,6 @@ const styles = StyleSheet.create({
   },
   suggestionText: { fontFamily: fonts.sans, fontSize: 14, color: colors.white },
 
-  // Header colonne
   setHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -422,7 +512,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Riga serie
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -450,7 +539,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   removeSetBtn: { width: 24, alignItems: 'center', justifyContent: 'center' },
-  removeSetIcon: { fontSize: 12, color: colors.gray4 },
+  removeSetIcon: { fontSize: 12, color: '#FF3B30', paddingHorizontal: 4 },
 
   addSetBtn: {
     marginTop: 8,

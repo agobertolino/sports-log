@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { colors, fonts } from '@/constants/theme';
+import i18n from '@/i18n';
 
 export default function TabsLayout() {
   return (
@@ -24,15 +25,15 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: ({ color }) => <TabIcon emoji="⬡" color={color} /> }}
+        options={{ title: i18n.t('home.title'), tabBarIcon: ({ color }) => <TabIcon emoji="⬡" color={color} /> }}
       />
       <Tabs.Screen
         name="storico"
-        options={{ title: 'Storico', tabBarIcon: ({ color }) => <TabIcon emoji="📋" color={color} /> }}
+        options={{ title: i18n.t('storico.title'), tabBarIcon: ({ color }) => <TabIcon emoji="📋" color={color} /> }}
       />
       <Tabs.Screen
         name="profilo"
-        options={{ title: 'Profilo', tabBarIcon: ({ color }) => <TabIcon emoji="⚙" color={color} /> }}
+        options={{ title: i18n.t('profilo.profile'), tabBarIcon: ({ color }) => <TabIcon emoji="⚙" color={color} /> }}
       />
     </Tabs>
   );

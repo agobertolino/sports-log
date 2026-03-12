@@ -5,6 +5,16 @@ import { useFocusEffect, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { getUser, updateUser } from '@/db/users';
 import db from '@/db/database';
+import i18n from '@/i18n';
+
+
+function formatDateInput(prev: string, next: string): string {
+  let clean = next.replace(/[^\d]/g, '');
+  if (clean.length > 8) clean = clean.slice(0, 8);
+  if (clean.length >= 5) return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+  if (clean.length >= 3) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  return clean;
+}
 
 export default function Profilo() {
   const [nome, setNome] = useState('');
@@ -27,7 +37,7 @@ export default function Profilo() {
   );
 
   const handleSave = () => {
-    if (!nome.trim()) { Alert.alert('Il nome è richiesto'); return; }
+    if (!nome.trim()) { Alert.alert(i18n.t('onboarding.errors.nameRequired')); return; }
     updateUser({
       nome: nome.trim(),
       data_nascita: nascita || undefined,
@@ -40,12 +50,12 @@ export default function Profilo() {
 
   const handleResetDB = () => {
     Alert.alert(
-      'Reset dati',
-      'Tutti i dati verranno cancellati. Sei sicuro?',
+      i18n.t('profilo.resetData'),
+      i18n.t('profilo.resetConfirm'),
       [
-        { text: 'Annulla', style: 'cancel' },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
         {
-          text: 'Reset', style: 'destructive',
+          text: i18n.t('profilo.resetBtn'), style: 'destructive',
           onPress: () => {
             db.execSync('DELETE FROM workout_sets');
             db.execSync('DELETE FROM workouts');
@@ -76,31 +86,31 @@ export default function Profilo() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Profilo</Text>
+        <Text style={styles.title}>{i18n.t('profilo.profile')}</Text>
 
-        <Field label="Nome" required value={nome} onChange={setNome} placeholder="Il tuo nome" />
-        <Field label="Data di nascita" value={nascita} onChange={setNascita} placeholder="GG/MM/AAAA" />
+        <Field label={i18n.t('onboarding.name')} required value={nome} onChange={setNome} placeholder={i18n.t('profilo.namePlaceholder')} />
+        <Field label={i18n.t('onboarding.dob')} value={nascita} onChange={v => setNascita(formatDateInput(nascita, v))} placeholder={i18n.t('onboarding.dobPlaceholder')} />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Field label="Peso" value={peso} onChange={setPeso} placeholder="75" unit="kg" numeric />
+            <Field label={i18n.t('onboarding.weight')} value={peso} onChange={setPeso} placeholder="75" unit="kg" numeric />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Altezza" value={altezza} onChange={setAltezza} placeholder="178" unit="cm" numeric />
+            <Field label={i18n.t('onboarding.height')} value={altezza} onChange={setAltezza} placeholder="178" unit="cm" numeric />
           </View>
         </View>
 
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>{saved ? 'Salvato ✓' : 'Salva modifiche'}</Text>
+          <Text style={styles.saveBtnText}>{saved ? i18n.t('common.saved') : i18n.t('common.save')}</Text>
         </TouchableOpacity>
 
         {/* ── Debug DB ── */}
         <View style={styles.debugSection}>
-          <Text style={styles.debugTitle}>Debug</Text>
+          <Text style={styles.debugTitle}>{i18n.t('profilo.debug')}</Text>
           <TouchableOpacity style={styles.debugBtn} onPress={handleLogDB} activeOpacity={0.8}>
-            <Text style={styles.debugBtnText}>Mostra contenuto DB</Text>
+            <Text style={styles.debugBtnText}>{i18n.t('profilo.showDb')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.debugBtn, styles.debugBtnDanger]} onPress={handleResetDB} activeOpacity={0.8}>
-            <Text style={styles.debugBtnDangerText}>Reset tutti i dati</Text>
+            <Text style={styles.debugBtnDangerText}>{i18n.t('profilo.resetAll')}</Text>
           </TouchableOpacity>
           {dbLog && (
             <ScrollView style={styles.debugLog} nestedScrollEnabled>
@@ -124,7 +134,7 @@ function Field({
     <View style={fieldStyles.wrap}>
       <View style={fieldStyles.labelRow}>
         <Text style={fieldStyles.label}>{label}</Text>
-        {required && <View style={fieldStyles.badge}><Text style={fieldStyles.badgeText}>Richiesto</Text></View>}
+        {required && <View style={fieldStyles.badge}><Text style={fieldStyles.badgeText}>{i18n.t('common.required')}</Text></View>}
         {unit && <Text style={fieldStyles.unit}>{unit}</Text>}
       </View>
       <TextInput

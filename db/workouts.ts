@@ -6,6 +6,7 @@ export type Workout = {
   muscoli: string | null;
   note: string | null;
   durata_secondi: number | null;
+  draft: string | null;
   data: string;
 };
 
@@ -70,6 +71,8 @@ export function getSetsForWorkout(workout_id: number): WorkoutSet[] {
 
 export function deleteWorkout(id: number): void {
   db.runSync(`DELETE FROM workouts WHERE id = ?`, [id]);
+  // Pulisci i fantasmi
+  try { db.runSync(`DELETE FROM workouts WHERE durata_secondi IS NULL`); } catch(e) {}
 }
 
 export function finishWorkout(id: number, durata_secondi: number): void {
@@ -77,4 +80,13 @@ export function finishWorkout(id: number, durata_secondi: number): void {
     `UPDATE workouts SET durata_secondi = ? WHERE id = ?`,
     [durata_secondi, id]
   );
+  // Elimina qualsiasi altra bozza orfana per evitare che rispunti nella home
+  try { db.runSync(`DELETE FROM workouts WHERE durata_secondi IS NULL`); } catch(e) {}
+}
+
+export function getActiveWorkout(): Workout | null {
+  // Pulizia: elimina le bozze abbandonate vuote per evitare ripristini fantasma
+  db.runSync(`DELETE FROM workouts WHERE durata_secondi IS NULL AND id NOT IN (SELECT workout_id FROM workout_sets)`);
+  // Prendi l'ultimo aperto
+  return db.getFirstSync<Workout>(`SELECT * FROM workouts WHERE durata_secondi IS NULL ORDER BY id DESC LIMIT 1`);
 }

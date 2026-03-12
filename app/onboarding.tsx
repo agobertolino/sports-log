@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { createUser } from '@/db/users';
 import Button from '@/components/Button';
+import i18n from '@/i18n';
 
 type Step = 0 | 1;
 
@@ -21,31 +22,31 @@ type Errors = {
 function validateDate(val: string): string | undefined {
   if (!val.trim()) return undefined; // opzionale
   const parts = val.split('/');
-  if (parts.length !== 3) return 'Formato: GG/MM/AAAA';
+  if (parts.length !== 3) return i18n.t('onboarding.errors.dateFormat');
   const [dd, mm, yyyy] = parts.map(Number);
-  if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return 'Formato: GG/MM/AAAA';
-  if (yyyy < 1900 || yyyy > new Date().getFullYear()) return 'Anno non valido';
-  if (mm < 1 || mm > 12) return 'Mese non valido';
-  if (dd < 1 || dd > 31) return 'Giorno non valido';
+  if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return i18n.t('onboarding.errors.dateFormat');
+  if (yyyy < 1900 || yyyy > new Date().getFullYear()) return i18n.t('onboarding.errors.yearInvalid');
+  if (mm < 1 || mm > 12) return i18n.t('onboarding.errors.monthInvalid');
+  if (dd < 1 || dd > 31) return i18n.t('onboarding.errors.dayInvalid');
   const d = new Date(yyyy, mm - 1, dd);
-  if (d > new Date()) return 'Data nel futuro';
-  if (d.getMonth() !== mm - 1) return 'Data non valida';
+  if (d > new Date()) return i18n.t('onboarding.errors.futureDate');
+  if (d.getMonth() !== mm - 1) return i18n.t('onboarding.errors.dateInvalid');
   return undefined;
 }
 
 function validatePeso(val: string): string | undefined {
   if (!val.trim()) return undefined;
   const n = parseFloat(val);
-  if (isNaN(n)) return 'Inserisci un numero';
-  if (n < 20 || n > 300) return 'Valore tra 20 e 300 kg';
+  if (isNaN(n)) return i18n.t('onboarding.errors.insertNumber');
+  if (n < 20 || n > 300) return i18n.t('onboarding.errors.weightRange');
   return undefined;
 }
 
 function validateAltezza(val: string): string | undefined {
   if (!val.trim()) return undefined;
   const n = parseFloat(val);
-  if (isNaN(n)) return 'Inserisci un numero';
-  if (n < 50 || n > 250) return 'Valore tra 50 e 250 cm';
+  if (isNaN(n)) return i18n.t('onboarding.errors.insertNumber');
+  if (n < 50 || n > 250) return i18n.t('onboarding.errors.heightRange');
   return undefined;
 }
 
@@ -70,7 +71,7 @@ export default function Onboarding() {
   const handleNext = () => {
     if (step === 0) {
       if (!nome.trim()) {
-        setErrors({ nome: 'Il nome è richiesto' });
+        setErrors({ nome: i18n.t('onboarding.errors.nameRequired') });
         return;
       }
       setErrors({});
@@ -114,21 +115,21 @@ export default function Onboarding() {
 
           {step === 0 ? (
             <>
-              <Text style={styles.eyebrow}>Benvenuto</Text>
+              <Text style={styles.eyebrow}>{i18n.t('onboarding.welcome')}</Text>
               <Text style={styles.title}>Come ti{'\n'}<Text style={styles.titleItalic}>chiami?</Text></Text>
               <Text style={styles.subtitle}>
                 È tutto quello che ci serve.{'\n'}
-                <Text style={{ color: colors.gray2 }}>Il resto è facoltativo.</Text>
+                <Text style={{ color: colors.gray2 }}>{i18n.t('onboarding.thatsAll').split('\n')[1]}</Text>
               </Text>
 
               <View style={styles.fieldWrap}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.fieldLabel}>Nome</Text>
-                  <View style={styles.badge}><Text style={styles.badgeText}>Richiesto</Text></View>
+                  <Text style={styles.fieldLabel}>{i18n.t('onboarding.name')}</Text>
+                  <View style={styles.badge}><Text style={styles.badgeText}>{i18n.t('common.required')}</Text></View>
                 </View>
                 <TextInput
                   style={[styles.input, errors.nome && styles.inputError]}
-                  placeholder="es. Marco"
+                  placeholder={i18n.t('onboarding.namePlaceholder')}
                   placeholderTextColor={colors.gray3}
                   value={nome}
                   onChangeText={t => { setNome(t); setErrors(e => ({ ...e, nome: undefined })); }}
@@ -141,21 +142,21 @@ export default function Onboarding() {
             </>
           ) : (
             <>
-              <Text style={styles.eyebrow}>Profilo</Text>
-              <Text style={styles.title}>Qualcosa{'\n'}su di <Text style={styles.titleItalic}>te.</Text></Text>
+              <Text style={styles.eyebrow}>{i18n.t('onboarding.profile')}</Text>
+              <Text style={styles.title}>{i18n.t('onboarding.aboutYou').split('\n')[0]}{'\n'}{i18n.t('onboarding.aboutYou').split('\n')[1].replace('te.', '')} <Text style={styles.titleItalic}>te.</Text></Text>
               <Text style={styles.subtitle}>
                 Tutto opzionale —{'\n'}
-                <Text style={{ color: colors.gray2 }}>puoi completare dopo nelle impostazioni.</Text>
+                <Text style={{ color: colors.gray2 }}>{i18n.t('onboarding.optionalSubtitle').split('\n')[1]}</Text>
               </Text>
 
               <View style={styles.fieldWrap}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.fieldLabel}>Data di nascita</Text>
-                  <Text style={styles.optional}>Opzionale</Text>
+                  <Text style={styles.fieldLabel}>{i18n.t('onboarding.dob')}</Text>
+                  <Text style={styles.optional}>{i18n.t('common.optional')}</Text>
                 </View>
                 <TextInput
                   style={[styles.input, errors.nascita && styles.inputError]}
-                  placeholder="GG/MM/AAAA"
+                  placeholder={i18n.t('onboarding.dobPlaceholder')}
                   placeholderTextColor={colors.gray3}
                   value={nascita}
                   onChangeText={v => {
@@ -171,7 +172,7 @@ export default function Onboarding() {
               <View style={styles.row}>
                 <View style={[styles.fieldWrap, { flex: 1 }]}>
                   <View style={styles.labelRow}>
-                    <Text style={styles.fieldLabel}>Peso</Text>
+                    <Text style={styles.fieldLabel}>{i18n.t('onboarding.weight')}</Text>
                     <Text style={styles.optional}>kg</Text>
                   </View>
                   <TextInput
@@ -186,7 +187,7 @@ export default function Onboarding() {
                 </View>
                 <View style={[styles.fieldWrap, { flex: 1 }]}>
                   <View style={styles.labelRow}>
-                    <Text style={styles.fieldLabel}>Altezza</Text>
+                    <Text style={styles.fieldLabel}>{i18n.t('onboarding.height')}</Text>
                     <Text style={styles.optional}>cm</Text>
                   </View>
                   <TextInput
@@ -206,14 +207,14 @@ export default function Onboarding() {
           <View style={styles.actions}>
             <TouchableOpacity style={styles.btnPrimary} onPress={handleNext} activeOpacity={0.85}>
               <Text style={styles.btnPrimaryText}>
-                {step === 0 ? 'Continua' : `Inizia, ${nome.trim()}`}{'  →'}
+                {step === 0 ? i18n.t('onboarding.continue') : `${i18n.t('onboarding.start')}${nome.trim()}`}{'  →'}
               </Text>
             </TouchableOpacity>
 
             {step === 1 && (
               <>
-                <Button label="Salta per ora" onPress={saveAndContinue} variant="ghost" />
-                <Button label="← Torna indietro" onPress={() => setStep(0)} variant="ghost" />
+                <Button label={i18n.t('onboarding.skipForNow')} onPress={saveAndContinue} variant="ghost" />
+                <Button label={i18n.t('onboarding.goBack')} onPress={() => setStep(0)} variant="ghost" />
               </>
             )}
           </View>

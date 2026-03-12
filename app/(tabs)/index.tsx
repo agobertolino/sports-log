@@ -4,29 +4,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { getUser } from '@/db/users';
-import { getAllWorkouts, type Workout } from '@/db/workouts';
+import { getAllWorkouts, getActiveWorkout, type Workout } from '@/db/workouts';
 import Button from '@/components/Button';
+import i18n from '@/i18n';
 
 export default function Home() {
   const [nome, setNome] = useState('');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       const user = getUser();
       setNome(user?.nome ?? '');
       setWorkouts(getAllWorkouts());
+      setActiveWorkout(getActiveWorkout());
     }, [])
   );
 
-  const today = new Date().toLocaleDateString('it-IT', {
+  const today = new Date().toLocaleDateString(i18n.locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
   const lastWorkout = workouts[0];
   const lastWorkoutLabel = lastWorkout
-    ? new Date(lastWorkout.data).toLocaleDateString('it-IT', { weekday: 'long' }) + ' — ' + lastWorkout.sport
-    : 'Nessun allenamento ancora';
+    ? new Date(lastWorkout.data).toLocaleDateString(i18n.locale, { weekday: 'long' }) + ' — ' + lastWorkout.sport
+    : i18n.t('home.noWorkoutsYet');
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -35,29 +38,40 @@ export default function Home() {
         {/* Greeting */}
         <Text style={styles.dateLabel}>{capitalize(today)}</Text>
         <Text style={styles.greeting}>
-          Ciao,{'\n'}<Text style={styles.greetingItalic}>{nome || 'atleta'}.</Text>
+          Ciao,{'\n'}<Text style={styles.greetingItalic}>{nome || i18n.t('common.athlete')}.</Text>
         </Text>
 
         {/* Stats */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{workouts.length}</Text>
-            <Text style={styles.statLabel}>Allenamenti</Text>
+            <Text style={styles.statLabel}>{i18n.t('home.workouts')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{getWeeksActive(workouts)}</Text>
-            <Text style={styles.statLabel}>Settimane</Text>
+            <Text style={styles.statLabel}>{i18n.t('home.weeks')}</Text>
           </View>
           <View style={[styles.statCard, styles.statCardWide]}>
-            <Text style={styles.statLastLabel}>Ultimo allenamento</Text>
+            <Text style={styles.statLastLabel}>{i18n.t('home.lastWorkout')}</Text>
             <Text style={styles.statLastValue}>{lastWorkoutLabel}</Text>
           </View>
         </View>
 
         {/* Actions */}
         <View style={styles.actions}>
-          <Button label="Nuovo allenamento" onPress={() => router.push('/nuovo-allenamento')} arrow />
-          <Button label="Allenamenti passati" onPress={() => router.push('/(tabs)/storico')} variant="secondary" arrow />
+          {activeWorkout ? (
+            <Button 
+              label={i18n.t('home.continueWorkout')} 
+              onPress={() => router.push({
+                pathname: '/nuovo-allenamento/esercizi',
+                params: { workoutId: activeWorkout.id, sport: activeWorkout.sport, isResume: '1' }
+              })} 
+              arrow 
+            />
+          ) : (
+            <Button label={i18n.t('home.newWorkout')} onPress={() => router.push('/nuovo-allenamento')} arrow />
+          )}
+          <Button label={i18n.t('home.pastWorkouts')} onPress={() => router.push('/(tabs)/storico')} variant="secondary" arrow />
         </View>
 
       </ScrollView>
