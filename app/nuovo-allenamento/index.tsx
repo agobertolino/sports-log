@@ -8,8 +8,8 @@ import Ciclismo from './ciclismo';
 
 const SPORTS = [
   { id: 'Palestra', icon: '🏋️', available: true },
-  { id: 'Corsa', icon: '🏃', available: true },
-  { id: 'Ciclismo', icon: '🚴', available: true },
+  { id: 'Corsa', icon: '🏃', available: false },
+  { id: 'Ciclismo', icon: '🚴', available: false },
   { id: 'Sci', icon: '⛷️', available: false },
   { id: 'Altro', icon: '···', available: false },
 ];
