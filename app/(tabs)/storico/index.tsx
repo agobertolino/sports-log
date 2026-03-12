@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '@/constants/theme';
 import { getAllWorkouts, type Workout } from '@/db/workouts';
 import i18n from '@/i18n';
 
+const { width } = Dimensions.get('window');
+const DAY_SIZE = (width - spacing.lg * 2 - 6 * 2) / 7; // 6 gaps of 2px each // (screen width - horizontal padding * 2) / 7 days
+
 export default function Storico() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useFocusEffect(
     useCallback(() => {
@@ -15,62 +19,143 @@ export default function Storico() {
     }, [])
   );
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(i18n.locale, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
+  // Group workouts by date (YYYY-MM-DD)
+  const workoutsByDate = useMemo(() => {
+    const map = new Map<string, Workout[]>();
+    workouts.forEach(w => {
+      const date = new Date(w.data);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(w);
     });
+    return map;
+  }, [workouts]);
+
+  // Get days of the current month
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDay = (firstDay.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+
+  const days = useMemo(() => {
+    const arr = [];
+    // Empty cells before the first day
+    for (let i = 0; i < startingDay; i++) {
+      arr.push(null);
+    }
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      arr.push(new Date(year, month, d));
+    }
+    return arr;
+  }, [year, month, startingDay, daysInMonth]);
+
+  const monthName = currentMonth.toLocaleDateString(i18n.locale, { month: 'long', year: 'numeric' });
+
+  const changeMonth = (direction: 'prev' | 'next') => {
+    const newMonth = new Date(currentMonth);
+    if (direction === 'prev') {
+      newMonth.setMonth(newMonth.getMonth() - 1);
+    } else {
+      newMonth.setMonth(newMonth.getMonth() + 1);
+    }
+    setCurrentMonth(newMonth);
   };
 
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const handleDayPress = (date: Date | null) => {
+    if (!date) return;
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    router.push(`/(tabs)/storico/giorno/${key}`);
+  };
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{i18n.t('storico.title')}</Text>
 
-        {workouts.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>{i18n.t('storico.emptyTitle')}</Text>
-            <Text style={styles.emptySubtitle}>{i18n.t('storico.emptySub')}</Text>
+        {/* Month selector */}
+        <View style={styles.monthHeader}>
+          <TouchableOpacity onPress={() => changeMonth('prev')}>
+            <Text style={styles.monthNav}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.monthName}>{monthName}</Text>
+          <TouchableOpacity onPress={() => changeMonth('next')}>
+            <Text style={styles.monthNav}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Day names */}
+        <View style={styles.dayNamesRow}>
+          {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
+            <Text key={day} style={styles.dayName}>{day}</Text>
+          ))}
+        </View>
+
+        {/* Calendar grid */}
+        <View style={styles.calendarGrid}>
+          {days.map((date, idx) => (
+            <DayCell
+              key={idx}
+              date={date}
+              workouts={date ? workoutsByDate.get(
+                `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+              ) ?? [] : []}
+              isToday={date ? todayKey === `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : false}
+              onPress={() => handleDayPress(date)}
+            />
+          ))}
+        </View>
+
+        {/* Legend */}
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: colors.gray2 }]} />
+            <Text style={styles.legendText}>{i18n.t('storico.dayWithWorkouts')}</Text>
           </View>
-        ) : (
-          workouts.map(w => (
-            <WorkoutCard key={w.id} workout={w} formatDate={formatDate} capitalize={capitalize} />
-          ))
-        )}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function WorkoutCard({ workout, formatDate, capitalize }: {
-  workout: Workout;
-  formatDate: (dateStr: string) => string;
-  capitalize: (s: string) => string;
+function DayCell({ date, workouts, isToday, onPress }: {
+  date: Date | null;
+  workouts: Workout[];
+  isToday: boolean;
+  onPress: () => void;
 }) {
-  const muscoli = workout.muscoli ? workout.muscoli.split(',').join(' · ') : null;
-  const durata = workout.durata_secondi
-    ? `${Math.floor(workout.durata_secondi / 60)} ${i18n.t('storico.min')}`
-    : null;
+  if (!date) {
+    return <View style={styles.dayCellEmpty} />;
+  }
+
+  const hasWorkouts = workouts.length > 0;
+  const dayNumber = date.getDate();
 
   return (
     <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/(tabs)/storico/${workout.id}`)}
-      activeOpacity={0.8}
+      style={[styles.dayCell, isToday && styles.dayCellToday]}
+      onPress={onPress}
+      activeOpacity={0.7}
     >
-      <View style={styles.cardLeft}>
-        <Text style={styles.sport}>{workout.sport}</Text>
-        <Text style={styles.date}>{capitalize(formatDate(workout.data))}</Text>
-        <View style={styles.metaRow}>
-          {durata && <Text style={styles.meta}>{durata}</Text>}
-          {muscoli && <Text style={styles.meta}>{muscoli}</Text>}
+      <Text style={[styles.dayNumber, isToday && styles.dayNumberToday]}>{dayNumber}</Text>
+      {hasWorkouts && (
+        <View style={styles.dots}>
+          {/* Show up to 3 dots for different sport types */}
+          {Array.from(new Set(workouts.map(w => w.sport))).slice(0, 3).map(sport => {
+            let color: string = colors.white;
+            if (sport === 'Palestra') color = '#4CAF50';
+            if (sport === 'Corsa') color = '#2196F3';
+            if (sport === 'Nuoto') color = '#FF9800';
+            return <View key={sport} style={[styles.dot, { backgroundColor: color }]} />;
+          })}
         </View>
-      </View>
-      <Text style={styles.chevron}>→</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -84,64 +169,93 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginBottom: spacing.lg,
   },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-  },
-  emptyTitle: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 18,
-    color: colors.gray2,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.gray3,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: 20,
-    marginBottom: 12,
+  monthHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  cardLeft: { flex: 1 },
-  sport: {
+  monthNav: {
+    fontSize: 30,
+    color: colors.gray2,
+    paddingHorizontal: 20,
+  },
+  monthName: {
     fontFamily: fonts.sansMedium,
-    fontSize: 18,
+    fontSize: 20,
     color: colors.white,
-    marginBottom: 4,
   },
-  date: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.gray3,
-    marginBottom: 8,
-  },
-  metaRow: {
+  dayNamesRow: {
     flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginBottom: spacing.sm,
   },
-  meta: {
+  dayName: {
     fontFamily: fonts.sans,
     fontSize: 12,
-    color: colors.gray2,
-    backgroundColor: colors.gray4,
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  chevron: {
-    fontSize: 20,
     color: colors.gray3,
-    marginLeft: 12,
+    width: DAY_SIZE,
+    textAlign: 'center',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    marginBottom: spacing.lg,
+  },
+  dayCellEmpty: {
+    width: DAY_SIZE,
+    height: DAY_SIZE,
+  },
+  dayCell: {
+    width: DAY_SIZE,
+    height: DAY_SIZE,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayCellToday: {
+    borderColor: colors.white,
+    borderWidth: 2,
+  },
+  dayNumber: {
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    color: colors.white,
+  },
+  dayNumberToday: {
+    fontFamily: fonts.sansMedium,
+    color: colors.white,
+  },
+  dots: {
+    flexDirection: 'row',
+    marginTop: 2,
+    gap: 3,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legend: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  legendText: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.gray3,
   },
 });

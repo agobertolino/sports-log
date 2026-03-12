@@ -28,7 +28,7 @@ export default function Home() {
 
   const lastWorkout = workouts[0];
   const lastWorkoutLabel = lastWorkout
-    ? new Date(lastWorkout.data).toLocaleDateString(i18n.locale, { weekday: 'long' }) + ' — ' + lastWorkout.sport
+    ? new Date(lastWorkout.data).toLocaleDateString(i18n.locale, { weekday: 'long' }) + ' — ' + (i18n.t(`common.sports.${lastWorkout.sport}`) || lastWorkout.sport)
     : i18n.t('home.noWorkoutsYet');
 
   return (

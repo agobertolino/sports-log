@@ -12,48 +12,6 @@ import i18n from '@/i18n';
 
 const ESERCIZI_COMUNI = [
   // Chest
-<<<<<<< HEAD
-  'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
-  'Dumbbell Fly', 'Cable Fly', 'Push-Up', 'Dips', 'Chest Press Machine',
-  'Pec Deck', 'Landmine Press',
-
-  // Back
-  'Lat Pulldown', 'Barbell Row', 'Dumbbell Row',
-  'Pull-Up', 'Chin-Up', 'Face Pull', 'Cable Row', 'Seated Cable Row',
-  'T-Bar Row', 'Meadows Row', 'Straight-Arm Pulldown', 'Shrugs',
-
-  // Shoulders
-  'Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press',
-  'Lateral Raise', 'Front Raise', 'Rear Delt Fly', 'Upright Row',
-  'Cable Lateral Raise', 'Machine Shoulder Press',
-
-  // Biceps
-  'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl',
-  'Preacher Curl', 'Cable Curl', 'Concentration Curl',
-  'Incline Dumbbell Curl', 'Spider Curl', 'Reverse Curl',
-
-  // Triceps
-  'Tricep Pushdown', 'French Press', 'Kickback',
-  'Overhead Tricep Extension', 'Close-Grip Bench Press',
-  'Skull Crusher', 'Cable Overhead Extension', 'Diamond Push-Up',
-
-  // Legs
-  'Squat', 'Front Squat', 'Goblet Squat', 'Hack Squat',
-  'Leg Press', 'Lunge', 'Bulgarian Split Squat',
-  'Deadlift', 'Romanian Deadlift', 'Sumo Deadlift', 'Stiff-Leg Deadlift',
-  'Leg Curl', 'Leg Extension', 'Calf Raise', 'Seated Calf Raise',
-  'Hip Thrust', 'Glute Bridge', 'Step-Up', 'Box Jump',
-  'Nordic Curl', 'Leg Press Calf Raise',
-
-  // Core
-  'Plank', 'Side Plank', 'Crunch', 'Russian Twist', 'Ab Wheel',
-  'Hanging Leg Raise', 'Cable Crunch', 'Bicycle Crunch',
-  'Dead Bug', 'Pallof Press', 'Dragon Flag', 'Toes to Bar',
-
-  // Olympic / Compound
-  'Clean and Press', 'Power Clean', 'Snatch', 'Thruster',
-  'Farmer Walk', 'Sled Push', 'Battle Ropes', 'Kettlebell Swing',
-=======
   'Barbell bench press', 'Incline barbell bench press', 'Decline barbell bench press',
   'Dumbbell bench press', 'Incline dumbbell press', 'Decline dumbbell press',
   'Dumbbell flyes', 'Incline dumbbell flyes', 'Cable flyes', 'Cable crossover',
@@ -104,7 +62,6 @@ const ESERCIZI_COMUNI = [
   // Olympic / Compound
   'Deadlift', 'Power clean', 'Clean and jerk', 'Snatch',
   'Farmer carry', 'Suitcase carry', 'Trap bar deadlift',
->>>>>>> fb3a49dae8c7325e949c8cf5ecf9adda5ff663aa
 ];
 
 
@@ -319,10 +276,18 @@ export default function Esercizi() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
+        <TouchableOpacity onPress={() => {
+    const isEmpty = esercizi.every(es => 
+      !es.nome.trim() && es.sets.every(s => !s.reps.trim() && !s.peso.trim())
+    );
+    if (isEmpty && workoutId) {
+      deleteWorkout(workoutId);
+    }
+    router.replace('/(tabs)');
+  }}>
           <Text style={styles.headerCancel}>{i18n.t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{sport ?? i18n.t('esercizi.palestra')}</Text>
+        <Text style={styles.headerTitle}>{sport ? i18n.t(`common.sports.${sport}`) || sport : i18n.t('esercizi.palestra')}</Text>
         <TouchableOpacity onPress={handleDiscard}>
           <Text style={styles.headerCancelRed}>{i18n.t('esercizi.deleteBtn')}</Text>
         </TouchableOpacity>
@@ -495,12 +460,12 @@ const styles = StyleSheet.create({
 
   collapsedCard: {
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: colors.gray2,
     borderRadius: radius.lg,
     paddingHorizontal: 18,
-    paddingVertical: 14,
-    marginBottom: 10,
+    paddingVertical: 16,
+    marginBottom: 12,
   },
   collapsedRow: {
     flexDirection: 'row',
@@ -514,15 +479,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   collapsedChevron: { color: colors.gray3, fontSize: 20, marginLeft: 8 },
-  collapsedMeta: { fontFamily: fonts.sans, fontSize: 12, color: colors.gray3, marginTop: 4 },
+  collapsedMeta: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: colors.gray2,
+    marginTop: 6,
+  },
 
   esercizioCard: {
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: colors.gray2,
     borderRadius: radius.lg,
-    padding: 18,
-    marginBottom: 10,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: colors.white,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   esercizioNome: {
     fontFamily: fonts.sansMedium,
@@ -560,7 +535,7 @@ const styles = StyleSheet.create({
   setHeaderCell: {
     fontFamily: fonts.sansMedium,
     fontSize: 10,
-    color: colors.gray3,
+    color: colors.gray2,
     letterSpacing: 0.8,
     textAlign: 'center',
   },
@@ -578,11 +553,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  setNumberText: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.gray2 },
+  setNumberText: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.gray1 },
   setInput: {
     backgroundColor: colors.bg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.gray3,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -595,11 +570,11 @@ const styles = StyleSheet.create({
   removeSetIcon: { fontSize: 12, color: '#FF3B30', paddingHorizontal: 4 },
 
   addSetBtn: {
-    marginTop: 8,
-    paddingVertical: 10,
+    marginTop: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.gray3,
     borderRadius: 10,
     borderStyle: 'dashed',
   },

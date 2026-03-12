@@ -77,7 +77,7 @@ export default function WorkoutDetail() {
         </View>
 
         {/* Title */}
-        <Text style={styles.sport}>{workout.sport}</Text>
+        <Text style={styles.sport}>{i18n.t(`common.sports.${workout.sport}`) || workout.sport}</Text>
         <Text style={styles.date}>{capitalize(date)}</Text>
 
         {/* Meta row */}

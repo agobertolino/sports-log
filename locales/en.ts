@@ -1,6 +1,11 @@
 const en = {
   common: {
-    back: '← Back',
+    sports: {
+      Palestra: 'Gym',
+      Corsa: 'Running',
+      Nuoto: 'Swimming',
+    },
+    back: 'Back',
     cancel: 'Cancel',
     delete: 'Delete',
     save: 'Save changes',
@@ -20,7 +25,11 @@ const en = {
     newWorkout: 'New workout',
     pastWorkouts: 'Past workouts',
   },
-  storico: {
+  storico: {    dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    dayWithWorkouts: 'Day with workouts',
+    invalidDate: 'Invalid date',
+    noWorkoutsToday: 'No workouts',
+    noWorkoutsTodaySub: 'You have not recorded any workouts for this day.',
     title: 'History',
     tabWorkouts: 'Workouts',
     tabAnalysis: 'Analysis',

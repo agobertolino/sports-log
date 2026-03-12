@@ -128,6 +128,7 @@ export default function Onboarding() {
                   <View style={styles.badge}><Text style={styles.badgeText}>{i18n.t('common.required')}</Text></View>
                 </View>
                 <TextInput
+                  key={`nome-input-${step}`}
                   style={[styles.input, errors.nome && styles.inputError]}
                   placeholder={i18n.t('onboarding.namePlaceholder')}
                   placeholderTextColor={colors.gray3}
@@ -135,7 +136,7 @@ export default function Onboarding() {
                   onChangeText={t => { setNome(t); setErrors(e => ({ ...e, nome: undefined })); }}
                   onSubmitEditing={handleNext}
                   returnKeyType="next"
-                  autoFocus
+                  autoFocus={step === 0}
                 />
                 {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
               </View>

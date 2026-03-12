@@ -25,7 +25,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: i18n.t('home.title'), tabBarIcon: ({ color }) => <TabIcon emoji="⬡" color={color} /> }}
+        options={{ title: i18n.t('home.title'), tabBarIcon: ({ color }) => <TabIcon emoji="⚪" color={color} /> }}
       />
       <Tabs.Screen
         name="storico"
