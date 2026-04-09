@@ -77,7 +77,10 @@ export default function WorkoutDetail() {
         </View>
 
         {/* Title */}
-        <Text style={styles.sport}>{i18n.t(`common.sports.${workout.sport}`) || workout.sport}</Text>
+        <View style={styles.sportRow}>
+          <View style={styles.sportDot} />
+          <Text style={styles.sport}>{i18n.t(`common.sports.${workout.sport}`) || workout.sport}</Text>
+        </View>
         <Text style={styles.date}>{capitalize(date)}</Text>
 
         {/* Meta row */}
@@ -149,11 +152,12 @@ const styles = StyleSheet.create({
   },
   backText: { fontFamily: fonts.sans, fontSize: 14, color: colors.gray3 },
   deleteText: { fontFamily: fonts.sans, fontSize: 14, color: '#FF6B6B' },
+  sportRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  sportDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
   sport: {
     fontFamily: fonts.serif,
     fontSize: 36,
     color: colors.white,
-    marginBottom: 6,
   },
   date: {
     fontFamily: fonts.sans,

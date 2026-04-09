@@ -71,6 +71,10 @@ const en = {
     kg: 'KG',
     palestra: 'Gym',
   },
+  palestra: {
+    muscoli: 'Muscles trained',
+    inizia: 'Start workout',
+  },
   nuovoAllenamento: {
     whatDoWeDo: 'What are we\ndoing today, ',
     palestra: 'Gym',
