@@ -6,6 +6,7 @@ import { colors, fonts, spacing, radius } from '@/constants/theme';
 import MuscleChip from '@/components/MuscleChip';
 import Button from '@/components/Button';
 import { createWorkout } from '@/db/workouts';
+import i18n from '@/i18n';
 
 const MUSCOLI = [
   'Petto', 'Schiena', 'Spalle', 'Bicipiti',
@@ -38,7 +39,7 @@ export default function Palestra() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.headerCancel}>← Indietro</Text>
+          <Text style={styles.headerCancel}>← {i18n.t('common.back')}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{sport ?? 'Palestra'}</Text>
         <View style={styles.headerSpacer} />
@@ -47,7 +48,7 @@ export default function Palestra() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>Muscoli allenati</Text>
+          <Text style={styles.fieldLabel}>{i18n.t('palestra.muscoli')}</Text>
           <View style={styles.grid}>
             {MUSCOLI.map(m => (
               <View key={m} style={styles.chipWrap}>
@@ -63,7 +64,7 @@ export default function Palestra() {
 
         <View style={styles.ctaWrap}>
           <Button
-            label="Inizia allenamento"
+            label={i18n.t('palestra.inizia')}
             onPress={handleStart}
             disabled={selected.length === 0}
             arrow

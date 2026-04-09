@@ -21,7 +21,7 @@ export default function Button({
       activeOpacity={0.85}
     >
       {loading
-        ? <ActivityIndicator color={variant === 'primary' ? colors.bg : colors.white} />
+        ? <ActivityIndicator color={colors.white} />
         : <Text style={[styles.label, styles[`${variant}Label`]]}>
             {label}{arrow ? '  →' : ''}
           </Text>
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
   },
   secondary: {
     backgroundColor: 'transparent',
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     fontFamily: fonts.sansSemiBold,
-    color: colors.bg,
+    color: colors.white,
   },
   secondaryLabel: {
     fontFamily: fonts.sans,

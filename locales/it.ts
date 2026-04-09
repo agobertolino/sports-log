@@ -71,6 +71,10 @@ const it = {
     kg: 'KG',
     palestra: 'Palestra',
   },
+  palestra: {
+    muscoli: 'Muscoli allenati',
+    inizia: 'Inizia allenamento',
+  },
   nuovoAllenamento: {
     whatDoWeDo: 'Cosa facciamo\noggi, ',
     palestra: 'Palestra',

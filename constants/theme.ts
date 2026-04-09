@@ -10,6 +10,8 @@ export const colors = {
   border: 'rgba(255,255,255,0.13)',      // era 0.08 — bordi più visibili
   borderHover: 'rgba(255,255,255,0.25)', // era 0.18
   error: 'rgba(255,80,80,0.5)',
+  primary: '#FF6D00',
+  primaryDim: 'rgba(255,109,0,0.12)',
 } as const;
 
 export const fonts = {

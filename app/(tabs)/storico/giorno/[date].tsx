@@ -76,14 +76,7 @@ function WorkoutCard({ workout }: { workout: Workout }) {
     ? `${Math.floor(workout.durata_secondi / 60)} ${i18n.t('storico.min')}`
     : null;
 
-  const sportColor = () => {
-    switch (workout.sport) {
-      case 'Palestra': return '#4CAF50';
-      case 'Corsa': return '#2196F3';
-      case 'Nuoto': return '#FF9800';
-      default: return colors.white;
-    }
-  };
+  const sportColor = () => colors.primary;
 
   return (
     <TouchableOpacity

@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selected: {
-    backgroundColor: colors.white,
-    borderColor: colors.white,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   label: {
     fontFamily: fonts.sans,
@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     fontFamily: fonts.sansSemiBold,
-    color: colors.bg,
+    color: colors.white,
   },
 });
