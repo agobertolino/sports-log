@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, padding: spacing.lg, paddingTop: spacing.xl },
   dots: { flexDirection: 'row', gap: 6, marginBottom: 36 },
   dot: { height: 3, width: 8, borderRadius: 2, backgroundColor: colors.gray4 },
-  dotActive: { width: 24, backgroundColor: colors.white },
+  dotActive: { width: 24, backgroundColor: colors.primary },
   eyebrow: {
     fontFamily: fonts.sansMedium,
     fontSize: 12,
@@ -288,10 +288,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   actions: { marginTop: 'auto', paddingTop: spacing.xl, gap: 10 },
   btnPrimary: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
     borderRadius: radius.lg,
     paddingVertical: 20,
     alignItems: 'center',
   },
-  btnPrimaryText: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.bg },
+  btnPrimaryText: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.white },
 });

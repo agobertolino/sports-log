@@ -23,7 +23,7 @@ export default function SportCard({ label, icon, available = true, onPress }: Pr
       </View>
       {available
         ? <Text style={styles.chevron}>›</Text>
-        : <View style={styles.tag}><Text style={styles.tagText}>Presto</Text></View>
+        : <View style={styles.tag}><Text style={styles.tagText}>🔒</Text></View>
       }
     </TouchableOpacity>
   );
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  disabled: { opacity: 0.3 },
+  disabled: { opacity: 0.35 },
   left: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   iconWrap: {
     width: 44, height: 44,

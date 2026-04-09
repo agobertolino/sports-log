@@ -114,7 +114,7 @@ export default function Storico() {
         {/* Legend */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: colors.gray2 }]} />
+            <View style={[styles.dot, { backgroundColor: colors.primary }]} />
             <Text style={styles.legendText}>{i18n.t('storico.dayWithWorkouts')}</Text>
           </View>
         </View>
@@ -147,13 +147,9 @@ function DayCell({ date, workouts, isToday, onPress }: {
       {hasWorkouts && (
         <View style={styles.dots}>
           {/* Show up to 3 dots for different sport types */}
-          {Array.from(new Set(workouts.map(w => w.sport))).slice(0, 3).map(sport => {
-            let color: string = colors.white;
-            if (sport === 'Palestra') color = '#4CAF50';
-            if (sport === 'Corsa') color = '#2196F3';
-            if (sport === 'Nuoto') color = '#FF9800';
-            return <View key={sport} style={[styles.dot, { backgroundColor: color }]} />;
-          })}
+          {Array.from(new Set(workouts.map(w => w.sport))).slice(0, 3).map(sport => (
+            <View key={sport} style={[styles.dot, { backgroundColor: colors.primary }]} />
+          ))}
         </View>
       )}
     </TouchableOpacity>
@@ -218,7 +214,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   dayCellToday: {
-    borderColor: colors.white,
+    borderColor: colors.primary,
     borderWidth: 2,
   },
   dayNumber: {

@@ -15,7 +15,7 @@ const SPORTS = [
 ];
 
 const ROUTES: Record<string, string> = {
-  Palestra: '/nuovo-allenamento/esercizi',
+  Palestra: '/nuovo-allenamento/palestra',
   Corsa: '/nuovo-allenamento/corsa',
   Ciclismo: '/nuovo-allenamento/ciclismo',
 };
